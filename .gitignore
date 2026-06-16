@@ -51,3 +51,26 @@ node_modules/
 .prisma/
 
 .DS_Store
+
+# Supabase
+supabase/.temp/
+supabase/.branches/
+
+# local database
+*.db
+*.sqlite
+*.sqlite3
+
+# logs
+*.log
+
+# uploads
+uploads/
+storage/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+Thumbs.db
