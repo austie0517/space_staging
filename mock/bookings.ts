@@ -1,0 +1,72 @@
+import type { Booking, BookingStatus } from "@/types";
+import { SAMPLE_SPACES } from "./spaces";
+import { AVATAR_GUEST } from "./users";
+
+export const statusLabel: Record<BookingStatus, string> = {
+  pending: "承認待ち",
+  confirmed: "確定",
+  completed: "完了",
+  cancelled: "キャンセル",
+};
+
+export const sampleBookings: Booking[] = [
+  {
+    id: "bk-1",
+    code: "ZL-88291",
+    spaceId: "sunset-atelier",
+    bookingLevel: "space",
+    quantity: 1,
+    spaceTitle: "Sunset Atelier",
+    spaceImage: SAMPLE_SPACES[0].images[0],
+    guestId: "guest-1",
+    guestName: "佐藤 健太",
+    guestAvatar: AVATAR_GUEST,
+    date: "2024年10月23日",
+    start: "10:00",
+    end: "14:00",
+    hours: 4,
+    total: 14080,
+    hostEarnings: 12800,
+    status: "pending",
+    message:
+      "はじめまして。ポートレート撮影のスタジオとして利用させてください。自然光の入り方がとても素敵だったので、こちらのスペースを選ばせていただきました。",
+  },
+  {
+    id: "bk-2",
+    code: "ZL-90124",
+    spaceId: "minimalist-lab",
+    bookingLevel: "space",
+    quantity: 1,
+    spaceTitle: "Minimalist Lab",
+    spaceImage: SAMPLE_SPACES[1].images[0],
+    guestId: "guest-1",
+    guestName: "佐藤 健太",
+    guestAvatar: AVATAR_GUEST,
+    date: "2024年11月4日",
+    start: "13:00",
+    end: "18:00",
+    hours: 5,
+    total: 15400,
+    hostEarnings: 14000,
+    status: "confirmed",
+  },
+  {
+    id: "bk-3",
+    code: "ZL-77310",
+    spaceId: "harajuku-hideout",
+    bookingLevel: "space",
+    quantity: 1,
+    spaceTitle: "Harajuku Hideout",
+    spaceImage: SAMPLE_SPACES[2].images[0],
+    guestId: "guest-1",
+    guestName: "佐藤 健太",
+    guestAvatar: AVATAR_GUEST,
+    date: "2024年9月15日",
+    start: "09:00",
+    end: "12:00",
+    hours: 3,
+    total: 10230,
+    hostEarnings: 9300,
+    status: "completed",
+  },
+];

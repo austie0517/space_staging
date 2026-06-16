@@ -1,0 +1,578 @@
+// ============================================================================
+//  Prisma Schema  —  space-rental  (introspected from Supabase, then cleaned)
+// ----------------------------------------------------------------------------
+//  - All models are PascalCase; real table names kept via @@map.
+//  - Relation fields are hand-named (db-pull auto names removed).
+//  - created_at / updated_at made non-null where a default exists.
+//  - RLS / triggers / grants live in supabase/migrations/*.sql, not here.
+//
+//  Status values are plain String (matching the live varchar columns):
+//    application : pending | approved | rejected
+//    space       : draft | pending | approved | rejected | suspended
+//    spaceType   : floor | booth | seat | room | (free text)
+//    booking     : pending | approved | rejected | cancelled | completed
+//    payment     : pending | authorized | captured | refunded | failed
+//    repeatType  : none | daily | weekly | monthly
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ====================  Identity  ====================
+
+model User {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email     String   @unique @db.VarChar(255)
+  phone     String?  @db.VarChar(50)
+  name      String   @db.VarChar(255)
+  isHost    Boolean  @default(false) @map("is_host")
+  isGuest   Boolean  @default(false) @map("is_guest")
+  isAdmin   Boolean  @default(false) @map("is_admin")
+  status    String   @default("active") @db.VarChar(20) // active | pending | suspended
+  avatarUrl String?  @map("avatar_url")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  host             Host?
+  guest            Guest?
+  hostApplication  HostApplication?  @relation("HostApplicant")
+  guestApplication GuestApplication? @relation("GuestApplicant")
+
+  reviewedHostApplications  HostApplication[]  @relation("HostApplicationReviewer")
+  reviewedGuestApplications GuestApplication[] @relation("GuestApplicationReviewer")
+  kycSubmissions            KycSubmission[]    @relation("KycSubmitter")
+  reviewedKycSubmissions    KycSubmission[]    @relation("KycReviewer")
+
+  lineConnection LineConnection?
+  notifications  Notification[]
+  paymentMethods PaymentMethod[]
+  auditLogs      AuditLog[]
+  favorites      Favorite[]
+
+  @@map("users")
+}
+
+model Host {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId          String   @unique @map("user_id") @db.Uuid
+  stripeAccountId String?  @map("stripe_account_id") @db.VarChar(255)
+  plan            String?  @default("free") @db.VarChar(20)
+  zipcode         String?  @db.VarChar(8)
+  prefecture      String?  @db.VarChar(20)
+  city            String?  @db.VarChar(50)
+  town            String?  @db.VarChar(100)
+  building        String?  @db.VarChar(100)
+  lat             Decimal? @db.Decimal(9, 6)
+  lng             Decimal? @db.Decimal(9, 6)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  spaces      Space[]
+  coupons     Coupon[]
+  discounts   Discount[]
+  settlements Settlement[]
+
+  @@map("hosts")
+}
+
+model Guest {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId     String   @unique @map("user_id") @db.Uuid
+  profession String?  @db.VarChar(100)
+  license    String?  @db.VarChar(100)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  bookings   Booking[]
+  couponUses CouponUse[]
+  discounts  Discount[]
+  reviews    Review[]
+
+  @@map("guests")
+}
+
+// ====================  Applications & KYC  ====================
+
+model HostApplication {
+  id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId         String    @unique @map("user_id") @db.Uuid
+  status         String    @default("pending") @db.VarChar(20)
+  idDocumentUrl  String?   @map("id_document_url")
+  idDocumentType String?   @map("id_document_type") @db.VarChar(50)
+  reviewNote     String?   @map("review_note")
+  reviewedBy     String?   @map("reviewed_by") @db.Uuid
+  reviewedAt     DateTime? @map("reviewed_at") @db.Timestamp(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  user     User  @relation("HostApplicant", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  reviewer User? @relation("HostApplicationReviewer", fields: [reviewedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("host_applications")
+}
+
+model GuestApplication {
+  id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId         String    @unique @map("user_id") @db.Uuid
+  status         String    @default("pending") @db.VarChar(20)
+  profession     String?   @db.VarChar(100)
+  isAutoApproved Boolean?  @default(false) @map("is_auto_approved")
+  reviewNote     String?   @map("review_note")
+  reviewedBy     String?   @map("reviewed_by") @db.Uuid
+  reviewedAt     DateTime? @map("reviewed_at") @db.Timestamp(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  user     User  @relation("GuestApplicant", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  reviewer User? @relation("GuestApplicationReviewer", fields: [reviewedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("guest_applications")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model KycSubmission {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  docType     String    @map("doc_type") @db.VarChar(40)
+  imageUrl    String?   @map("image_url")
+  status      String    @default("pending") @db.VarChar(20)
+  reviewedBy  String?   @map("reviewed_by") @db.Uuid
+  reviewedAt  DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  submittedAt DateTime  @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user     User  @relation("KycSubmitter", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  reviewer User? @relation("KycReviewer", fields: [reviewedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([status], map: "idx_kyc_status")
+  @@map("kyc_submissions")
+}
+
+// ====================  Spaces  ====================
+
+model Space {
+  id            String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  hostId        String   @map("host_id") @db.Uuid
+  parentSpaceId String?  @map("parent_space_id") @db.Uuid
+  name          String   @db.VarChar(255)
+  spaceType     String   @map("space_type") @db.VarChar(50)
+  resourceCategory String @default("venue") @map("resource_category") @db.VarChar(40)
+  capacityUnit  String   @default("person") @map("capacity_unit") @db.VarChar(20)
+  attributes    Json     @default("{}")
+  status        String   @default("draft") @db.VarChar(20)
+  description   String?
+  pitchTitle    String?  @map("pitch_title") @db.VarChar(120)
+  pitchBody     String?  @map("pitch_body")
+  minBookingHours Int    @default(1) @map("min_booking_hours")
+  capacity      Int?     @default(1)
+  zipcode       String?  @db.VarChar(8)
+  prefecture    String?  @db.VarChar(20)
+  city          String?  @db.VarChar(50)
+  town          String?  @db.VarChar(100)
+  building      String?  @db.VarChar(100)
+  lat           Decimal? @db.Decimal(9, 6)
+  lng           Decimal? @db.Decimal(9, 6)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  host        Host    @relation(fields: [hostId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  parentSpace Space?  @relation("ParentSpace", fields: [parentSpaceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  childSpaces Space[] @relation("ParentSpace")
+
+  images          SpaceImage[]
+  availabilities  Availability[]
+  bookings        Booking[]
+  pricingRules    PricingRule[]
+  options         SpaceOption[]
+  spaceFields     SpaceField[]
+  tagRelations    SpaceTagRelation[]
+  coupons         Coupon[]
+  discounts       Discount[]
+  repeatDiscounts RepeatDiscount[]
+  reviews         Review[]
+  favorites       Favorite[]
+
+  @@index([hostId], map: "idx_spaces_host")
+  @@index([name(ops: raw("gin_trgm_ops"))], map: "idx_spaces_name_trgm", type: Gin)
+  @@index([status], map: "idx_spaces_status")
+  @@map("spaces")
+}
+
+model SpaceImage {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  spaceId   String   @map("space_id") @db.Uuid
+  imageUrl  String   @map("image_url")
+  isCover   Boolean? @default(false) @map("is_cover")
+  sortOrder Int?     @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("space_images")
+}
+
+model Availability {
+  id             String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  spaceId        String     @map("space_id") @db.Uuid
+  bookableLevel  String     @default("both") @map("bookable_level") @db.VarChar(20)
+  repeatType     String     @default("none") @map("repeat_type") @db.VarChar(20)
+  startDate      DateTime   @map("start_date") @db.Date
+  endDate        DateTime?  @map("end_date") @db.Date
+  startTime      DateTime   @map("start_time") @db.Time(6)
+  endTime        DateTime   @map("end_time") @db.Time(6)
+  dayOfWeek      Int[]      @map("day_of_week")
+  exceptionDates DateTime[] @default([]) @map("exception_dates") @db.Date
+  isActive       Boolean?   @default(true) @map("is_active")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([spaceId], map: "idx_availabilities_space")
+  @@map("availabilities")
+}
+
+model SpaceField {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  spaceId      String   @map("space_id") @db.Uuid
+  fieldKey     String   @map("field_key") @db.VarChar(50)
+  fieldLabel   String   @map("field_label") @db.VarChar(80)
+  fieldValue   String?  @map("field_value")
+  isPublic     Boolean  @default(true) @map("is_public")
+  displayOrder Int      @default(0) @map("display_order")
+  fieldType    String   @default("text") @map("field_type") @db.VarChar(20)
+  options      Json?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([spaceId, displayOrder], map: "idx_space_fields_space")
+  @@map("space_fields")
+}
+
+model SpaceOption {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  spaceId   String   @map("space_id") @db.Uuid
+  name      String   @db.VarChar(100)
+  priceType String   @map("price_type") @db.VarChar(20)
+  price     Int
+  isActive  Boolean? @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  space          Space           @relation(fields: [spaceId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  bookingOptions BookingOption[]
+
+  @@map("space_options")
+}
+
+model PricingRule {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  spaceId   String   @map("space_id") @db.Uuid
+  ruleName  String?  @map("rule_name") @db.VarChar(100)
+  startTime DateTime @map("start_time") @db.Time(6)
+  endTime   DateTime @map("end_time") @db.Time(6)
+  priceType String?  @default("hourly") @map("price_type") @db.VarChar(20)
+  price     Int
+  priority  Int?     @default(0)
+
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("pricing_rules")
+}
+
+model SpaceTag {
+  id           String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String             @unique @db.VarChar(50)
+  category     String?            @db.VarChar(40)
+  tagRelations SpaceTagRelation[]
+
+  @@map("space_tags")
+}
+
+model SpaceTagRelation {
+  spaceId String @map("space_id") @db.Uuid
+  tagId   String @map("tag_id") @db.Uuid
+
+  space Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tag   SpaceTag @relation(fields: [tagId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([spaceId, tagId])
+  @@map("space_tag_relations")
+}
+
+// ====================  Bookings  ====================
+
+model Booking {
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  spaceId        String   @map("space_id") @db.Uuid
+  guestId        String   @map("guest_id") @db.Uuid
+  bookingLevel   String   @default("space") @map("booking_level") @db.VarChar(20)
+  quantity       Int      @default(1)
+  startAt        DateTime @map("start_at") @db.Timestamp(6)
+  endAt          DateTime @map("end_at") @db.Timestamp(6)
+  status         String   @default("pending") @db.VarChar(20)
+  subtotal       Int      @default(0)
+  discountAmount Int      @default(0) @map("discount_amount")
+  optionTotal    Int      @default(0) @map("option_total")
+  platformFee    Int      @default(0) @map("platform_fee")
+  tax            Int      @default(0)
+  totalPrice     Int      @default(0) @map("total_price")
+  couponId       String?  @map("coupon_id") @db.Uuid
+  discountNote   String?  @map("discount_note") @db.VarChar(255)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  space      Space           @relation(fields: [spaceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  guest      Guest           @relation(fields: [guestId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  coupon     Coupon?         @relation(fields: [couponId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  options    BookingOption[]
+  couponUses CouponUse[]
+  payments   Payment[]
+  reviews    Review[]
+
+  @@index([guestId], map: "idx_bookings_guest")
+  @@index([spaceId, startAt, endAt], map: "idx_bookings_space_time")
+  @@index([status], map: "idx_bookings_status")
+  @@index([createdAt], map: "idx_bookings_created")
+  @@map("bookings")
+}
+
+model BookingOption {
+  id         String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  bookingId  String @map("booking_id") @db.Uuid
+  optionId   String @map("option_id") @db.Uuid
+  quantity   Int?   @default(1)
+  unitPrice  Int    @map("unit_price")
+  totalPrice Int    @map("total_price")
+
+  booking Booking     @relation(fields: [bookingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  option  SpaceOption @relation(fields: [optionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("booking_options")
+}
+
+// ====================  Payments  ====================
+
+model Payment {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  bookingId       String    @map("booking_id") @db.Uuid
+  paymentIntentId String?   @map("payment_intent_id") @db.VarChar(255)
+  amount          Int
+  status          String?   @db.VarChar(20)
+  paidAt          DateTime? @map("paid_at") @db.Timestamp(6)
+  stripeChargeId  String?   @map("stripe_charge_id")
+  stripeRefundId  String?   @map("stripe_refund_id")
+  failureReason   String?   @map("failure_reason")
+  receiptUrl      String?   @map("receipt_url")
+  refundedAmount  Int?      @map("refunded_amount")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([bookingId], map: "idx_payments_booking")
+  @@index([createdAt], map: "idx_payments_created")
+  @@map("payments")
+}
+
+model PaymentMethod {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String   @map("user_id") @db.Uuid
+  stripePaymentMethodId String?  @map("stripe_payment_method_id")
+  brand                 String?  @db.VarChar(20)
+  last4                 String?  @db.Char(4)
+  expMonth              Int?     @map("exp_month")
+  expYear               Int?     @map("exp_year")
+  isDefault             Boolean  @default(false) @map("is_default")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId], map: "idx_pm_user")
+  @@map("payment_methods")
+}
+
+// ====================  Coupons / discounts / settlements  ====================
+
+model Coupon {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  code            String    @unique @db.VarChar(50)
+  description     String?   @db.VarChar(255)
+  discountType    String    @map("discount_type") @db.VarChar(20)
+  discountValue   Int       @map("discount_value")
+  hostId          String?   @map("host_id") @db.Uuid
+  spaceId         String?   @map("space_id") @db.Uuid
+  maxUses         Int?      @map("max_uses")
+  currentUses     Int       @default(0) @map("current_uses")
+  maxUsesPerGuest Int?      @default(1) @map("max_uses_per_guest")
+  validFrom       DateTime? @map("valid_from") @db.Date
+  validUntil      DateTime? @map("valid_until") @db.Date
+  isActive        Boolean?  @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  host       Host?       @relation(fields: [hostId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  space      Space?      @relation(fields: [spaceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  bookings   Booking[]
+  couponUses CouponUse[]
+
+  @@map("coupons")
+}
+
+model CouponUse {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  couponId  String   @map("coupon_id") @db.Uuid
+  guestId   String   @map("guest_id") @db.Uuid
+  bookingId String   @map("booking_id") @db.Uuid
+  usedAt    DateTime @default(now()) @map("used_at") @db.Timestamp(6)
+
+  coupon  Coupon  @relation(fields: [couponId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  guest   Guest   @relation(fields: [guestId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("coupon_uses")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Discount {
+  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  guestId       String    @map("guest_id") @db.Uuid
+  hostId        String?   @map("host_id") @db.Uuid
+  spaceId       String?   @map("space_id") @db.Uuid
+  discountType  String    @map("discount_type") @db.VarChar(20)
+  discountValue Int       @map("discount_value")
+  validFrom     DateTime? @map("valid_from") @db.Date
+  validUntil    DateTime? @map("valid_until") @db.Date
+  isActive      Boolean?  @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  guest Guest  @relation(fields: [guestId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  host  Host?  @relation(fields: [hostId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  space Space? @relation(fields: [spaceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([guestId], map: "idx_discounts_guest")
+  @@map("discounts")
+}
+
+model RepeatDiscount {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  spaceId         String   @map("space_id") @db.Uuid
+  minBookings     Int      @map("min_bookings")
+  discountType    String   @map("discount_type") @db.VarChar(20)
+  discountValue   Int      @map("discount_value")
+  countWindowDays Int?     @map("count_window_days")
+  isActive        Boolean? @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("repeat_discounts")
+}
+
+model Settlement {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hostId       String    @map("host_id") @db.Uuid
+  periodStart  DateTime  @map("period_start") @db.Date
+  periodEnd    DateTime  @map("period_end") @db.Date
+  bookingTotal Int       @default(0) @map("booking_total")
+  platformFee  Int       @default(0) @map("platform_fee")
+  payoutAmount Int       @default(0) @map("payout_amount")
+  status       String    @default("pending") @db.VarChar(20)
+  paidAt       DateTime? @map("paid_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  host Host @relation(fields: [hostId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([hostId], map: "idx_settlements_host")
+  @@map("settlements")
+}
+
+// ====================  Engagement  ====================
+
+model Favorite {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  spaceId   String   @map("space_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([userId, spaceId])
+  @@index([userId], map: "idx_favorites_user")
+  @@map("favorites")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model Review {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId String?  @map("booking_id") @db.Uuid
+  guestId   String   @map("guest_id") @db.Uuid
+  spaceId   String   @map("space_id") @db.Uuid
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  booking Booking? @relation(fields: [bookingId], references: [id], onUpdate: NoAction)
+  guest   Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  space   Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([spaceId], map: "idx_reviews_space")
+  @@map("reviews")
+}
+
+model Notification {
+  id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  type      String?   @db.VarChar(50)
+  title     String?   @db.VarChar(255)
+  body      String?
+  isRead    Boolean   @default(false) @map("is_read")
+  readAt    DateTime? @map("read_at") @db.Timestamptz(6)
+  sentAt    DateTime? @map("sent_at") @db.Timestamp(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId], map: "idx_notifications_user")
+  @@index([createdAt], map: "idx_notifications_created")
+  @@map("notifications")
+}
+
+model LineConnection {
+  userId                String   @id @map("user_id") @db.Uuid
+  connected             Boolean  @default(false)
+  lineUserId            String?  @map("line_user_id")
+  displayName           String?  @map("display_name")
+  notifBookingConfirmed Boolean  @default(true) @map("notif_booking_confirmed")
+  notifCancelled        Boolean  @default(true) @map("notif_cancelled")
+  notifEntryPin         Boolean  @default(true) @map("notif_entry_pin")
+  notifExitReminder     Boolean  @default(true) @map("notif_exit_reminder")
+  updatedAt             DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("line_connections")
+}
+
+// ====================  Ops  ====================
+
+model AuditLog {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  action     String   @db.VarChar(100)
+  targetType String?  @map("target_type") @db.VarChar(50)
+  targetId   String?  @map("target_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([userId], map: "idx_audit_logs_user")
+  @@map("audit_logs")
+}
