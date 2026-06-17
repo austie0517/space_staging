@@ -1,4 +1,8 @@
+
 {
+"scripts": {
+  "start": "node server.js"
+}
   "name": "space-rental",
   "version": "0.1.0",
   "private": true,
