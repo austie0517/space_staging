@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 
 const DEMO_HOST_ID = process.env.DEMO_HOST_ID;
@@ -6,13 +7,13 @@ const DEMO_HOST_ID = process.env.DEMO_HOST_ID;
  * Host identity. No auth yet, so we resolve the demo host (the first one
  * created). Replace with the authenticated host once sessions land.
  */
-export async function getCurrentHost() {
+export const getCurrentHost = cache(async function getCurrentHost() {
   return prisma.host.findFirst({
     ...(DEMO_HOST_ID ? { where: { id: DEMO_HOST_ID } } : {}),
     orderBy: { createdAt: "asc" },
     include: { user: true },
   });
-}
+});
 
 /** Update a host's profile (name/email live on `users`). */
 export async function updateHostProfile(params: {

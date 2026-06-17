@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 
 const DEMO_GUEST_ID = process.env.DEMO_GUEST_ID;
@@ -6,13 +7,13 @@ const DEMO_GUEST_ID = process.env.DEMO_GUEST_ID;
  * Guest identity. No auth yet, so we resolve the demo guest (the first one
  * created). Replace with the authenticated guest once sessions land.
  */
-export async function getCurrentGuest() {
+export const getCurrentGuest = cache(async function getCurrentGuest() {
   return prisma.guest.findFirst({
     ...(DEMO_GUEST_ID ? { where: { id: DEMO_GUEST_ID } } : {}),
     orderBy: { createdAt: "asc" },
     include: { user: true },
   });
-}
+});
 
 /** Set a user's avatar URL. */
 export async function setUserAvatar(userId: string, avatarUrl: string) {

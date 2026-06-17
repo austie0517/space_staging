@@ -31,8 +31,14 @@ const FILTERS: { key: Filter; label: string }[] = [
 
 export function AdminUsersClient({
   users: initialUsers,
+  total,
+  page,
+  pageSize,
 }: {
   users: AdminUser[];
+  total: number;
+  page: number;
+  pageSize: number;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -59,7 +65,7 @@ export function AdminUsersClient({
   return (
     <AdminShell>
       <h2 className="mb-4 text-sm font-bold uppercase tracking-widest text-on-surface-variant">
-        ユーザー（{visible.length}）
+        ユーザー（{total}件中 {visible.length}件表示・{page} / {Math.max(1, Math.ceil(total / pageSize))}ページ）
       </h2>
 
       {/* Status filter */}

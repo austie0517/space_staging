@@ -1,15 +1,7 @@
-import { getActorUserId } from "@/lib/repositories/adminRepository";
-import { getCurrentGuest } from "@/lib/repositories/guestRepository";
-import { getCurrentHost } from "@/lib/repositories/hostRepository";
+import { getActorUserIdByRole } from "@/lib/currentActor";
 import { markNotificationsRead } from "@/lib/repositories/notificationRepository";
 
 type NotificationRole = "guest" | "host" | "admin";
-
-async function getUserId(role: NotificationRole) {
-  if (role === "guest") return (await getCurrentGuest())?.userId;
-  if (role === "host") return (await getCurrentHost())?.userId;
-  return getActorUserId();
-}
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as {
@@ -29,7 +21,7 @@ export async function POST(request: Request) {
     : [];
   if (ids.length === 0) return Response.json({ count: 0 });
 
-  const userId = await getUserId(body.role);
+  const userId = await getActorUserIdByRole(body.role);
   if (!userId) return Response.json({ error: "Not found" }, { status: 404 });
 
   const result = await markNotificationsRead(userId, ids);

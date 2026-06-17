@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import type { Space } from "@/types";
 import { Chip, Icon, cn } from "../_components/ui";
@@ -39,7 +40,17 @@ function inBand(price: number, band: PriceBand): boolean {
   return true;
 }
 
-export function SpacesClient({ initialSpaces }: { initialSpaces: Space[] }) {
+export function SpacesClient({
+  initialSpaces,
+  page,
+  total,
+  totalPages,
+}: {
+  initialSpaces: Space[];
+  page: number;
+  total: number;
+  totalPages: number;
+}) {
   const [category, setCategory] = useState("all");
   const [query, setQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -182,6 +193,28 @@ export function SpacesClient({ initialSpaces }: { initialSpaces: Space[] }) {
           ))}
         </section>
 
+        <div className="mt-6 px-4 text-sm text-on-surface-variant">
+          {total}件中 {initialSpaces.length}件表示・{page} / {totalPages}ページ
+        </div>
+
+        {totalPages > 1 && (
+          <nav className="mt-4 flex flex-wrap items-center justify-center gap-2 px-4">
+            <PageLink page={page - 1} disabled={page <= 1}>
+              前へ
+            </PageLink>
+            {Array.from({ length: totalPages }, (_, index) => index + 1)
+              .slice(Math.max(0, page - 3), Math.max(5, Math.min(totalPages, page + 2)))
+              .map((value) => (
+                <PageLink key={value} page={value} active={value === page}>
+                  {value}
+                </PageLink>
+              ))}
+            <PageLink page={page + 1} disabled={page >= totalPages}>
+              次へ
+            </PageLink>
+          </nav>
+        )}
+
         {filtered.length === 0 && (
           <p className="mt-16 text-center text-on-surface-variant">
             条件に合うスペースが見つかりませんでした。
@@ -194,17 +227,48 @@ export function SpacesClient({ initialSpaces }: { initialSpaces: Space[] }) {
   );
 }
 
+function PageLink({
+  page,
+  active = false,
+  disabled = false,
+  children,
+}: {
+  page: number;
+  active?: boolean;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  const href = page <= 1 ? "/spaces" : `/spaces?page=${page}`;
+  return (
+    <Link
+      href={href}
+      aria-disabled={disabled}
+      className={cn(
+        "rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
+        active
+          ? "border-primary bg-primary text-on-primary"
+          : disabled
+            ? "pointer-events-none border-border bg-surface-low text-on-surface-variant/50"
+            : "border-border bg-surface-card text-on-surface-variant hover:bg-surface-low",
+      )}
+    >
+      {children}
+    </Link>
+  );
+}
+
 function SpaceCard({ space }: { space: Space }) {
   const { isFavorite, toggle } = useFavorites();
   const fav = isFavorite(space.id);
   return (
     <Link href={`/spaces/${space.id}`} className="group flex flex-col gap-3">
       <div className="relative aspect-[4/5] overflow-hidden rounded-xl bg-surface-highest">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={space.images[0]}
           alt={space.title}
-          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+          fill
+          sizes="(max-width: 639px) 92vw, (max-width: 1023px) 46vw, 30vw"
+          className="object-cover transition-transform duration-700 group-hover:scale-105"
         />
         <button
           className={cn(

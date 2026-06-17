@@ -1,20 +1,53 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 
-// Relations needed to render a booking card (space cover + guest name).
-const bookingInclude = {
-  space: { include: { images: true } },
-  guest: {
-    include: {
-      user: { include: { kycSubmissions: true } },
-      bookings: true,
-      reviews: true,
+// Lightweight selection for booking lists/cards.
+const bookingSelect = {
+  id: true,
+  spaceId: true,
+  guestId: true,
+  bookingLevel: true,
+  quantity: true,
+  startAt: true,
+  endAt: true,
+  totalPrice: true,
+  platformFee: true,
+  status: true,
+  discountNote: true,
+  space: {
+    select: {
+      name: true,
+      images: {
+        select: { imageUrl: true, isCover: true, sortOrder: true },
+      },
     },
   },
-} satisfies Prisma.BookingInclude;
+  guest: {
+    select: {
+      createdAt: true,
+      profession: true,
+      license: true,
+      user: {
+        select: {
+          name: true,
+          avatarUrl: true,
+          kycSubmissions: {
+            select: { status: true },
+          },
+        },
+      },
+      bookings: {
+        select: { status: true },
+      },
+      reviews: {
+        select: { rating: true },
+      },
+    },
+  },
+} satisfies Prisma.BookingSelect;
 
 export type BookingWithRelations = Prisma.BookingGetPayload<{
-  include: typeof bookingInclude;
+  select: typeof bookingSelect;
 }>;
 
 /** Create a booking. Caller supplies spaceId/guestId and the priced amounts. */
@@ -91,11 +124,17 @@ export async function updateBookingStatus(id: string, status: string) {
 }
 
 /** All bookings across the platform (admin). */
-export async function getAllBookings() {
+export async function getAllBookings(params?: { skip?: number; take?: number }) {
   return prisma.booking.findMany({
-    include: bookingInclude,
+    select: bookingSelect,
     orderBy: { startAt: "desc" },
+    skip: params?.skip,
+    take: params?.take,
   });
+}
+
+export async function countAllBookings() {
+  return prisma.booking.count();
 }
 
 /** Cancel a booking and mark its payments refunded (admin refund). */
@@ -120,7 +159,7 @@ export async function refundBooking(id: string) {
 export async function getBookingsByGuest(guestId: string) {
   return prisma.booking.findMany({
     where: { guestId },
-    include: bookingInclude,
+    select: bookingSelect,
     orderBy: { startAt: "desc" },
   });
 }
@@ -129,7 +168,7 @@ export async function getBookingsByGuest(guestId: string) {
 export async function getBookingsBySpace(spaceId: string) {
   return prisma.booking.findMany({
     where: { spaceId },
-    include: bookingInclude,
+    select: bookingSelect,
     orderBy: { startAt: "desc" },
   });
 }
@@ -164,7 +203,7 @@ export async function getBookingsForResourceCalendar(spaceId: string) {
   if (ids.length === 0) return [];
   return prisma.booking.findMany({
     where: { id: { in: ids } },
-    include: bookingInclude,
+    select: bookingSelect,
     orderBy: { startAt: "desc" },
   });
 }
@@ -173,7 +212,7 @@ export async function getBookingsForResourceCalendar(spaceId: string) {
 export async function getBookingsByHost(hostId: string) {
   return prisma.booking.findMany({
     where: { space: { hostId } },
-    include: bookingInclude,
+    select: bookingSelect,
     orderBy: { startAt: "desc" },
   });
 }

@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import { Noto_Sans_JP, Zen_Kaku_Gothic_New } from "next/font/google";
 import "./globals.css";
 import { FavoritesProvider } from "./_components/useFavorites";
-import { getCurrentGuest } from "@/lib/repositories/guestRepository";
-import { getFavoriteSpaceIds } from "@/lib/repositories/favoriteRepository";
 
 // Body — practical & soft. JP-first, Latin glyphs included.
 const notoSansJP = Noto_Sans_JP({
@@ -31,9 +29,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const guest = await getCurrentGuest();
-  const favoriteIds = guest ? await getFavoriteSpaceIds(guest.userId) : [];
-
   return (
     <html
       lang="ja"
@@ -47,7 +42,7 @@ export default async function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-background text-on-surface">
-        <FavoritesProvider initialIds={favoriteIds}>
+        <FavoritesProvider>
           {children}
         </FavoritesProvider>
       </body>

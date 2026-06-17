@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FavoritesProvider } from "../../_components/useFavorites";
 import {
   getSpace,
   getSpaceMinBookingHours,
@@ -14,8 +15,7 @@ import { toUISpaceField } from "@/lib/mappers/spaceField";
 import { toCalendarBooking } from "@/lib/mappers/booking";
 import { SpaceDetailClient } from "./SpaceDetailClient";
 
-// Reads live data on each request (Prisma → Supabase).
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export default async function SpaceDetailPage({
   params,
@@ -37,26 +37,35 @@ export default async function SpaceDetailPage({
   }
 
   const space = toUISpace(row);
-  space.minBookingHours = await getSpaceMinBookingHours(id);
-  const resourceMeta = await getSpaceResourceMeta(id);
-  space.resourceCategory = resourceMeta.resourceCategory;
-  space.capacityUnit = resourceMeta.capacityUnit;
   const reviews = row.reviews.map(toUIReview);
   const fields = row.spaceFields.map(toUISpaceField);
   const availabilityResourceId = row.parentSpaceId ?? id;
-  const availabilities = await getUIAvailabilities(availabilityResourceId);
-  const bookings = (await getBookingsForResourceCalendar(id)).map(toCalendarBooking);
-  const guest = await getCurrentGuest();
+  const guestPromise = getCurrentGuest();
+  const [minBookingHours, resourceMeta, availabilities, bookingRows, guest] =
+    await Promise.all([
+      getSpaceMinBookingHours(id),
+      getSpaceResourceMeta(id),
+      getUIAvailabilities(availabilityResourceId),
+      getBookingsForResourceCalendar(id),
+      guestPromise,
+    ]);
+
+  space.minBookingHours = minBookingHours;
+  space.resourceCategory = resourceMeta.resourceCategory;
+  space.capacityUnit = resourceMeta.capacityUnit;
+  const bookings = bookingRows.map(toCalendarBooking);
   const canRequestBooking = guest ? await isKycApproved(guest.userId) : false;
 
   return (
-    <SpaceDetailClient
-      space={space}
-      reviews={reviews}
-      fields={fields}
-      availabilities={availabilities}
-      bookings={bookings}
-      canRequestBooking={canRequestBooking}
-    />
+    <FavoritesProvider syncOnMount>
+      <SpaceDetailClient
+        space={space}
+        reviews={reviews}
+        fields={fields}
+        availabilities={availabilities}
+        bookings={bookings}
+        canRequestBooking={canRequestBooking}
+      />
+    </FavoritesProvider>
   );
 }

@@ -44,6 +44,27 @@ export async function getUnreadNotificationCount(
   });
 }
 
+export async function getUnreadNotificationCounts(
+  userId: string,
+  groups: Array<{
+    key: string;
+    includedTypes?: NotificationType[];
+    excludedTypes?: NotificationType[];
+  }>,
+) {
+  const entries = await Promise.all(
+    groups.map(async (group) => {
+      const count = await getUnreadNotificationCount(
+        userId,
+        group.excludedTypes ?? [],
+        group.includedTypes ?? [],
+      );
+      return [group.key, count] as const;
+    }),
+  );
+  return Object.fromEntries(entries);
+}
+
 export async function createNotification(input: NotificationInput) {
   return prisma.notification.create({
     data: {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { Badge, cn } from "../../_components/ui";
 import { AdminShell } from "../AdminShell";
 import type { Space } from "@/types";
@@ -13,7 +14,17 @@ const PUB_FILTERS: { key: Pub; label: string }[] = [
   { key: "unpublished", label: "非公開" },
 ];
 
-export function AdminSpacesClient({ spaces }: { spaces: Space[] }) {
+export function AdminSpacesClient({
+  spaces,
+  total,
+  page,
+  pageSize,
+}: {
+  spaces: Space[];
+  total: number;
+  page: number;
+  pageSize: number;
+}) {
   const [pub, setPub] = useState<Pub>("all");
   const [area, setArea] = useState("all");
 
@@ -32,7 +43,7 @@ export function AdminSpacesClient({ spaces }: { spaces: Space[] }) {
   return (
     <AdminShell>
       <h2 className="mb-4 text-sm font-bold uppercase tracking-widest text-on-surface-variant">
-        全スペース（{visible.length}）
+        全スペース（{total}件中 {visible.length}件表示・{page} / {Math.max(1, Math.ceil(total / pageSize))}ページ）
       </h2>
 
       {/* Filters */}
@@ -87,10 +98,12 @@ export function AdminSpacesClient({ spaces }: { spaces: Space[] }) {
             key={s.id}
             className="flex items-center gap-3 rounded-xl border border-border bg-surface-card p-3"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={s.images[0]}
               alt={s.title}
+              width={64}
+              height={56}
+              sizes="64px"
               className="h-14 w-16 flex-none rounded-lg object-cover"
             />
             <div className="flex-1">

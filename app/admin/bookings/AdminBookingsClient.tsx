@@ -20,8 +20,14 @@ type Action = { booking: Booking; type: "cancel" | "refund" };
 
 export function AdminBookingsClient({
   initialBookings,
+  total,
+  page,
+  pageSize,
 }: {
   initialBookings: Booking[];
+  total: number;
+  page: number;
+  pageSize: number;
 }) {
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [refunded, setRefunded] = useState<Set<string>>(new Set());
@@ -67,7 +73,7 @@ export function AdminBookingsClient({
     <AdminShell>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-sm font-bold uppercase tracking-widest text-on-surface-variant">
-          全予約（{visible.length}）
+          全予約（{total}件中 {visible.length}件表示・{page} / {Math.max(1, Math.ceil(total / pageSize))}ページ）
         </h2>
       </div>
 

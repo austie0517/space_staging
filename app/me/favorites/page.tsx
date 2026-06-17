@@ -1,3 +1,4 @@
+import { FavoritesProvider } from "../../_components/useFavorites";
 import { getCurrentGuest } from "@/lib/repositories/guestRepository";
 import { getFavoriteSpaces } from "@/lib/repositories/favoriteRepository";
 import { toUISpace } from "@/lib/mappers/space";
@@ -12,5 +13,9 @@ export default async function FavoritesPage() {
     ? (await getFavoriteSpaces(guest.userId)).map(toUISpace)
     : [];
 
-  return <FavoritesClient initialFavorites={favorites} />;
+  return (
+    <FavoritesProvider initialIds={favorites.map((space) => space.id)}>
+      <FavoritesClient initialFavorites={favorites} />
+    </FavoritesProvider>
+  );
 }

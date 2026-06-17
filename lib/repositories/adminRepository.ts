@@ -1,7 +1,8 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 
 /** All users (admin user list). */
-export async function getAllUsers() {
+export async function getAllUsers(params?: { skip?: number; take?: number }) {
   return prisma.user.findMany({
     include: {
       guest: true,
@@ -12,7 +13,13 @@ export async function getAllUsers() {
       },
     },
     orderBy: { createdAt: "asc" },
+    skip: params?.skip,
+    take: params?.take,
   });
+}
+
+export async function countAllUsers() {
+  return prisma.user.count();
 }
 
 /** Set a user's account status (active | pending | suspended). */
@@ -23,7 +30,7 @@ export async function setUserStatus(id: string, status: string) {
 /* ------------------------------------------------------- audit trail */
 
 /** Resolve the acting admin (no auth yet: first admin, else first user). */
-export async function getActorUserId() {
+export const getActorUserId = cache(async function getActorUserId() {
   const admin = await prisma.user.findFirst({
     where: { isAdmin: true },
     select: { id: true },
@@ -34,7 +41,7 @@ export async function getActorUserId() {
     select: { id: true },
   });
   return any?.id ?? null;
-}
+});
 
 /** Write an audit_logs entry. Never throws (logging must not break the op). */
 export async function recordAudit(

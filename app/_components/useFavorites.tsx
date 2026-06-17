@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useState,
   useTransition,
 } from "react";
@@ -24,14 +25,39 @@ type FavoritesValue = {
 const FavoritesContext = createContext<FavoritesValue | null>(null);
 
 export function FavoritesProvider({
-  initialIds,
+  initialIds = [],
+  syncOnMount = false,
   children,
 }: {
-  initialIds: string[];
+  initialIds?: string[];
+  syncOnMount?: boolean;
   children: React.ReactNode;
 }) {
   const [ids, setIds] = useState<string[]>(initialIds);
   const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!syncOnMount) return;
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const res = await fetch("/api/favorites", {
+          credentials: "same-origin",
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { ids?: string[] };
+        if (!cancelled) setIds(data.ids ?? []);
+      } catch (e) {
+        console.error("[favorites:hydrate] failed:", e);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [syncOnMount]);
 
   const flip = (id: string) =>
     setIds((prev) =>

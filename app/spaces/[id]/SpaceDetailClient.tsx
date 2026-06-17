@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import type { Availability, Review, Space, SpaceField } from "@/types";
 import type { CalendarBooking } from "@/lib/mappers/booking";
@@ -105,11 +106,13 @@ export function SpaceDetailClient({
     <div className="min-h-full pb-28">
       {/* Hero */}
       <div className="relative aspect-[4/3] w-full overflow-hidden sm:aspect-[21/9]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={space.images[0]}
           alt={space.title}
-          className="h-full w-full object-cover"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-on-surface/70 via-transparent to-on-surface/10" />
 

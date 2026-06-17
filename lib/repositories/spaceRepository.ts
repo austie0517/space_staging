@@ -7,16 +7,38 @@ import type { Prisma } from "@prisma/client";
  * `@/lib/mappers/space`. Server-only — never import from a client component.
  */
 
-// Relations needed to render a space card / detail in the UI.
-const spaceInclude = {
-  images: true,
-  options: true,
-  reviews: true,
-  tagRelations: { include: { tag: true } },
-} satisfies Prisma.SpaceInclude;
+// Lightweight selection for space cards / list pages.
+const spaceCardSelect = {
+  id: true,
+  name: true,
+  prefecture: true,
+  city: true,
+  town: true,
+  description: true,
+  pitchTitle: true,
+  pitchBody: true,
+  resourceCategory: true,
+  capacityUnit: true,
+  minBookingHours: true,
+  capacity: true,
+  spaceType: true,
+  status: true,
+  images: {
+    select: { imageUrl: true, isCover: true, sortOrder: true },
+  },
+  options: {
+    select: { priceType: true, price: true, isActive: true },
+  },
+  reviews: {
+    select: { rating: true },
+  },
+  tagRelations: {
+    select: { tag: { select: { name: true } } },
+  },
+} satisfies Prisma.SpaceSelect;
 
 export type SpaceWithRelations = Prisma.SpaceGetPayload<{
-  include: typeof spaceInclude;
+  select: typeof spaceCardSelect;
 }>;
 
 // Detail page also needs review authors, public custom fields and availability.
@@ -41,19 +63,33 @@ export type SpaceDetail = Prisma.SpaceGetPayload<{
 }>;
 
 /** All spaces (admin / internal listings). */
-export async function getSpaces() {
+export async function getSpaces(params?: { skip?: number; take?: number }) {
   return prisma.space.findMany({
-    include: spaceInclude,
+    select: spaceCardSelect,
     orderBy: { createdAt: "desc" },
+    skip: params?.skip,
+    take: params?.take,
   });
 }
 
+export async function countAllSpaces() {
+  return prisma.space.count();
+}
+
 /** Only published spaces — the public /spaces feed. */
-export async function getPublishedSpaces() {
+export async function getPublishedSpaces(params?: { skip?: number; take?: number }) {
   return prisma.space.findMany({
     where: { status: { in: ["approved", "published"] } },
-    include: spaceInclude,
+    select: spaceCardSelect,
     orderBy: { createdAt: "desc" },
+    skip: params?.skip,
+    take: params?.take,
+  });
+}
+
+export async function countPublishedSpaces() {
+  return prisma.space.count({
+    where: { status: { in: ["approved", "published"] } },
   });
 }
 
@@ -61,7 +97,7 @@ export async function getPublishedSpaces() {
 export async function getHostSpaces(hostId: string) {
   return prisma.space.findMany({
     where: { hostId },
-    include: spaceInclude,
+    select: spaceCardSelect,
     orderBy: { createdAt: "desc" },
   });
 }
