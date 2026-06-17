@@ -267,6 +267,7 @@ function SpaceCard({ space }: { space: Space }) {
           src={space.images[0]}
           alt={space.title}
           fill
+          quality={55}
           sizes="(max-width: 639px) 92vw, (max-width: 1023px) 46vw, 30vw"
           className="object-cover transition-transform duration-700 group-hover:scale-105"
         />

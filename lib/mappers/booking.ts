@@ -1,3 +1,4 @@
+import { optimizeImageUrl } from "@/lib/imageUrl";
 import type { Booking, BookingStatus } from "@/types";
 import type { BookingWithRelations } from "@/lib/repositories/bookingRepository";
 
@@ -21,7 +22,10 @@ function cover(images: { imageUrl: string; isCover: boolean | null; sortOrder: n
       Number(b.isCover) - Number(a.isCover) ||
       (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
   );
-  return sorted[0]?.imageUrl || COVER_PLACEHOLDER;
+  return optimizeImageUrl(sorted[0]?.imageUrl || COVER_PLACEHOLDER, {
+    width: 640,
+    quality: 55,
+  });
 }
 
 const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:00`;
@@ -74,7 +78,10 @@ export function toUIBooking(b: BookingWithRelations): Booking {
     spaceImage: cover(b.space.images),
     guestId: b.guestId,
     guestName: b.guest.user.name,
-    guestAvatar: b.guest.user.avatarUrl || AVATAR_PLACEHOLDER,
+    guestAvatar: optimizeImageUrl(b.guest.user.avatarUrl || AVATAR_PLACEHOLDER, {
+      width: 160,
+      quality: 55,
+    }),
     guestProfession: b.guest.profession ?? undefined,
     guestLicense: b.guest.license ?? undefined,
     guestVerified: verified,

@@ -2,7 +2,6 @@ import { FavoritesProvider } from "../_components/useFavorites";
 import {
   countPublishedSpaces,
   getPublishedSpaces,
-  getSpaceResourceMetas,
 } from "@/lib/repositories/spaceRepository";
 import { toUISpace } from "@/lib/mappers/space";
 import { SpacesClient } from "./SpacesClient";
@@ -22,14 +21,7 @@ export default async function SpacesPage({
     getPublishedSpaces({ skip, take: PAGE_SIZE }),
     countPublishedSpaces(),
   ]);
-  const meta = await getSpaceResourceMetas(rows.map((row) => row.id));
-  const spaces = rows.map((row) => {
-    const space = toUISpace(row);
-    const resource = meta.get(row.id);
-    space.resourceCategory = resource?.resourceCategory ?? "venue";
-    space.capacityUnit = resource?.capacityUnit ?? "person";
-    return space;
-  });
+  const spaces = rows.map(toUISpace);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   return (
     <FavoritesProvider syncOnMount>

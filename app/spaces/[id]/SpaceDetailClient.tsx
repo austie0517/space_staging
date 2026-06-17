@@ -111,6 +111,7 @@ export function SpaceDetailClient({
           alt={space.title}
           fill
           priority
+          quality={60}
           sizes="100vw"
           className="object-cover"
         />

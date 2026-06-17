@@ -103,6 +103,7 @@ export function AdminSpacesClient({
               alt={s.title}
               width={64}
               height={56}
+              quality={50}
               sizes="64px"
               className="h-14 w-16 flex-none rounded-lg object-cover"
             />

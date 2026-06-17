@@ -1,3 +1,4 @@
+import { optimizeImageUrl } from "@/lib/imageUrl";
 import type {
   AdminUser,
   Application,
@@ -64,7 +65,10 @@ export function toUIKycSubmission(k: KycRow): KycSubmission {
     id: k.id,
     userId: k.userId,
     userName: k.user.name,
-    avatar: k.user.avatarUrl || AVATAR,
+    avatar: optimizeImageUrl(k.user.avatarUrl || AVATAR, {
+      width: 160,
+      quality: 55,
+    }),
     docType: k.docType,
     submittedAt: jdate(k.submittedAt),
     status: kycStatus(k.status),
@@ -94,7 +98,10 @@ export function toAdminUser(u: AdminUserRow): AdminUser {
   return {
     id: u.id,
     name: u.name,
-    avatar: u.avatarUrl || AVATAR,
+    avatar: optimizeImageUrl(u.avatarUrl || AVATAR, {
+      width: 160,
+      quality: 55,
+    }),
     role,
     email: u.email,
     phone: u.phone || undefined,

@@ -3,10 +3,7 @@ import { Badge, Button, Icon } from "../../_components/ui";
 import { HostHeader } from "../../_components/HostHeader";
 import { HostNav } from "../../_components/HostNav";
 import { getCurrentHost } from "@/lib/repositories/hostRepository";
-import {
-  getHostSpaces,
-  getSpaceResourceMetas,
-} from "@/lib/repositories/spaceRepository";
+import { getHostSpaces } from "@/lib/repositories/spaceRepository";
 import { toUISpace } from "@/lib/mappers/space";
 import {
   capacityUnitLabel,
@@ -20,14 +17,7 @@ export const dynamic = "force-dynamic";
 export default async function HostSpacesPage() {
   const host = await getCurrentHost();
   const rows = host ? await getHostSpaces(host.id) : [];
-  const meta = await getSpaceResourceMetas(rows.map((row) => row.id));
-  const spaces = rows.map((row) => {
-    const space = toUISpace(row);
-    const resource = meta.get(row.id);
-    space.resourceCategory = resource?.resourceCategory ?? "venue";
-    space.capacityUnit = resource?.capacityUnit ?? "person";
-    return space;
-  });
+  const spaces = rows.map(toUISpace);
 
   return (
     <div className="min-h-screen pb-24 md:pt-14">

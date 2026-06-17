@@ -1,3 +1,4 @@
+import { optimizeImageUrl } from "@/lib/imageUrl";
 import type { Space } from "@/types";
 import type { SpaceWithRelations } from "@/lib/repositories/spaceRepository";
 
@@ -12,7 +13,7 @@ export function toUISpace(s: SpaceWithRelations): Space {
         Number(b.isCover) - Number(a.isCover) ||
         (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
     )
-    .map((img) => img.imageUrl)
+    .map((img) => optimizeImageUrl(img.imageUrl, { width: 1200, quality: 58 }))
     .filter(Boolean);
 
   const activeOptions = s.options.filter((o) => o.isActive !== false);
