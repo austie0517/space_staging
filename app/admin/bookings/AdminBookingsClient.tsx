@@ -179,7 +179,7 @@ export function AdminBookingsClient({
             onClick={() => setActing(null)}
             className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm"
           />
-          <div className="relative z-10 w-full max-w-sm rounded-t-2xl bg-surface-card p-6 shadow-[var(--shadow-soft)] sm:rounded-2xl">
+          <div className="relative z-10 w-full max-w-sm rounded-t-2xl bg-surface-card p-6 shadow-soft sm:rounded-2xl">
             <h3 className="font-display text-xl text-on-surface">
               {acting.type === "refund" ? "返金しますか？" : "予約をキャンセルしますか？"}
             </h3>

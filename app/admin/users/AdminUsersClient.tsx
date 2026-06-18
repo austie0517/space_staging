@@ -168,7 +168,7 @@ function UserProfileDialog({
         onClick={onClose}
         className="absolute inset-0 bg-on-surface/45 backdrop-blur-sm"
       />
-      <div className="relative z-10 flex max-h-[88dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-surface-card shadow-[var(--shadow-soft)] md:rounded-2xl">
+      <div className="relative z-10 flex max-h-[88dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-surface-card shadow-soft md:rounded-2xl">
         <div className="flex items-start justify-between border-b border-border px-5 py-4">
           <div className="flex items-center gap-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}

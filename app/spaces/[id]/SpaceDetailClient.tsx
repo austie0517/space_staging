@@ -276,7 +276,7 @@ function ButtonLinkLike({ href }: { href: string }) {
   return (
     <Link
       href={href}
-      className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-8 py-4 text-base font-semibold text-on-primary shadow-[var(--shadow-soft)] transition-all duration-200 hover:brightness-110 active:brightness-95"
+      className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-8 py-4 text-base font-semibold text-on-primary shadow-soft transition-all duration-200 hover:brightness-110 active:brightness-95"
     >
       本人確認へ
       <Icon name="verified_user" className="text-[20px]" />

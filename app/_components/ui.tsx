@@ -40,7 +40,7 @@ const buttonBase =
 
 const buttonVariants: Record<ButtonVariant, string> = {
   primary:
-    "bg-primary text-on-primary shadow-[var(--shadow-soft)] hover:brightness-110 active:brightness-95",
+    "bg-primary text-on-primary shadow-soft hover:brightness-110 active:brightness-95",
   secondary:
     "bg-surface-card text-on-surface border border-border hover:bg-surface-low",
   ghost: "bg-transparent text-primary hover:bg-primary-container/20",
@@ -123,7 +123,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "bg-surface-card border border-border rounded-lg shadow-[var(--shadow-card)]",
+        "bg-surface-card border border-border rounded-lg shadow-card",
         className,
       )}
       {...props}
@@ -267,7 +267,7 @@ export function Toast({
       aria-live="polite"
       className="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex justify-center px-5"
     >
-      <div className="flex items-center gap-2 rounded-full bg-on-surface px-5 py-3 text-sm font-semibold text-surface shadow-[var(--shadow-soft)] animate-[toast-in_180ms_ease-out]">
+      <div className="flex items-center gap-2 rounded-full bg-on-surface px-5 py-3 text-sm font-semibold text-surface shadow-soft animate-[toast-in_180ms_ease-out]">
         <Icon name={icon ?? toastIcons[tone]} filled className={cn("text-[18px]", toastIconColor[tone])} />
         {message}
       </div>

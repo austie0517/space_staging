@@ -5,7 +5,18 @@ const AVATAR_PLACEHOLDER =
   "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80";
 
 type ReviewWithGuest = Prisma.ReviewGetPayload<{
-  include: { guest: { include: { user: true } } };
+  include: {
+    guest: {
+      include: {
+        user: {
+          select: {
+            name: true;
+            avatarUrl: true;
+          };
+        };
+      };
+    };
+  };
 }>;
 
 /** Map a Prisma `Review` (+guest.user) to the UI `Review` shape. */

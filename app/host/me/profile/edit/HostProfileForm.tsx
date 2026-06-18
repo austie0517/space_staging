@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Icon, Toast } from "../../../../_components/ui";
-import { sampleHost } from "@/lib/sampleData";
+import { sampleHost } from "@/mock/users";
 import { updateHostProfileAction, uploadHostAvatarAction } from "../../actions";
 import {
   buildFullAddress,

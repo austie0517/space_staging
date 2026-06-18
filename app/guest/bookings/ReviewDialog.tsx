@@ -59,7 +59,7 @@ export function ReviewDialog({
         className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm"
       />
 
-      <div className="relative z-10 flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-surface-card shadow-[var(--shadow-soft)] sm:rounded-2xl">
+      <div className="relative z-10 flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-surface-card shadow-soft sm:rounded-2xl">
         <header className="flex items-center justify-between border-b border-border px-6 py-4">
           <h2 className="font-display text-xl text-on-surface">レビューを書く</h2>
           <button

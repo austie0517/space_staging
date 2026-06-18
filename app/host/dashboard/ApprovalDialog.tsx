@@ -82,7 +82,7 @@ export function ApprovalDialog({
         onClick={onClose}
         className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm"
       />
-      <div className="relative z-10 flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-surface-low shadow-[var(--shadow-soft)] md:max-h-[calc(100dvh-7rem)] md:max-w-2xl md:rounded-2xl">
+      <div className="relative z-10 flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-surface-low shadow-soft md:max-h-[calc(100dvh-7rem)] md:max-w-2xl md:rounded-2xl">
         <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-surface-card px-5 py-4">
           <button
             onClick={onClose}
@@ -242,7 +242,7 @@ export function ApprovalDialog({
             onClick={() => setRejectOpen(false)}
             className="absolute inset-0 bg-on-surface/50"
           />
-          <div className="relative z-10 flex max-h-[85dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-surface-card shadow-[var(--shadow-soft)] md:max-h-[75dvh] md:rounded-2xl">
+          <div className="relative z-10 flex max-h-[85dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-surface-card shadow-soft md:max-h-[75dvh] md:rounded-2xl">
             <div className="border-b border-border px-5 py-4">
               <div className="flex items-start justify-between gap-3">
                 <div>

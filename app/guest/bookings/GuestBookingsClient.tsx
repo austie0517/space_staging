@@ -81,7 +81,7 @@ export function GuestBookingsClient({
                     key={b.id}
                     className={cancelled ? "opacity-60" : undefined}
                   >
-                    <div className="flex gap-3 rounded-xl border border-border bg-surface-card p-3 shadow-[var(--shadow-card)]">
+                    <div className="flex gap-3 rounded-xl border border-border bg-surface-card p-3 shadow-card">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={b.spaceImage}
@@ -191,7 +191,7 @@ export function GuestBookingsClient({
             onClick={() => setCancelling(null)}
             className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm"
           />
-          <div className="relative z-10 w-full max-w-sm rounded-t-2xl bg-surface-card p-6 shadow-[var(--shadow-soft)] sm:rounded-2xl">
+          <div className="relative z-10 w-full max-w-sm rounded-t-2xl bg-surface-card p-6 shadow-soft sm:rounded-2xl">
             <h2 className="font-display text-xl text-on-surface">
               予約をキャンセルしますか？
             </h2>

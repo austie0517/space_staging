@@ -10,7 +10,7 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-surface-low px-4 py-10">
-      <div className="w-full max-w-md rounded-2xl bg-surface-card p-8 shadow-[var(--shadow-soft)]">
+      <div className="w-full max-w-md rounded-2xl bg-surface-card p-8 shadow-soft">
         <div className="text-center">
           <h1 className="font-display text-4xl text-primary">Zenith Lumina</h1>
           <p className="mt-2 text-on-surface-variant">
@@ -25,7 +25,7 @@ export default function LoginPage() {
             className={cn(
               "rounded-md py-2.5 text-sm font-bold transition-colors",
               tab === "login"
-                ? "bg-surface-card text-primary shadow-[var(--shadow-card)]"
+                ? "bg-surface-card text-primary shadow-card"
                 : "text-on-surface-variant",
             )}
           >
@@ -36,7 +36,7 @@ export default function LoginPage() {
             className={cn(
               "rounded-md py-2.5 text-sm font-bold transition-colors",
               tab === "signup"
-                ? "bg-surface-card text-primary shadow-[var(--shadow-card)]"
+                ? "bg-surface-card text-primary shadow-card"
                 : "text-on-surface-variant",
             )}
           >

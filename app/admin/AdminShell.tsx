@@ -28,7 +28,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="px-5 py-4">
           <Link
             href="/admin"
-            className="flex items-center gap-4 rounded-xl border border-border bg-surface-card p-5 shadow-[var(--shadow-card)] transition-colors hover:bg-surface-low"
+            className="flex items-center gap-4 rounded-xl border border-border bg-surface-card p-5 shadow-card transition-colors hover:bg-surface-low"
           >
             <span className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-primary-container/40">
               <Icon name="assignment" className="text-primary" />

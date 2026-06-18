@@ -43,7 +43,7 @@ export default async function HostSpacesPage() {
               <Link
                 key={s.id}
                 href={`/host/spaces/${s.id}`}
-                className="flex gap-4 rounded-xl border border-border bg-surface-card p-3 shadow-[var(--shadow-card)] transition-all hover:border-primary-container"
+                className="flex gap-4 rounded-xl border border-border bg-surface-card p-3 shadow-card transition-all hover:border-primary-container"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img

@@ -15,6 +15,26 @@ export const getCurrentHost = cache(async function getCurrentHost() {
   });
 });
 
+export const getCurrentHostWithAddress = cache(async function getCurrentHostWithAddress() {
+  const host = await prisma.host.findFirst({
+    ...(DEMO_HOST_ID ? { where: { id: DEMO_HOST_ID } } : {}),
+    orderBy: { createdAt: "asc" },
+    include: { user: true },
+  });
+  if (!host) return null;
+
+  return {
+    ...host,
+    address: {
+      zipcode: host.zipcode ?? "",
+      prefecture: host.prefecture ?? "",
+      city: host.city ?? "",
+      town: host.town ?? "",
+      building: host.building ?? "",
+    },
+  };
+});
+
 /** Update a host's profile (name/email live on `users`). */
 export async function updateHostProfile(params: {
   hostId: string;

@@ -71,7 +71,7 @@ export default function PreviewPage() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="group flex items-center gap-4 rounded-lg border border-border bg-surface-card p-4 shadow-[var(--shadow-card)] transition-all hover:border-primary-container hover:shadow-[var(--shadow-soft)]"
+                  className="group flex items-center gap-4 rounded-lg border border-border bg-surface-card p-4 shadow-card transition-all hover:border-primary-container hover:shadow-soft"
                 >
                   <span className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-primary-container/30">
                     <Icon name={item.icon} className="text-[22px] text-primary" />

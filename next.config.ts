@@ -20,6 +20,7 @@ const nextConfig: NextConfig = {
     root: workspaceRoot,
   },
   images: {
+    qualities: [50, 55, 58, 60, 75],
     remotePatterns: [
       {
         protocol: "https",

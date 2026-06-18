@@ -4,7 +4,7 @@
 
 ## アーキテクチャ
 - **DB**: Supabase (PostgreSQL)。Prisma 経由でアクセス（`provider = "postgresql"`）。
-  - 接続: `.env` の `DATABASE_URL`（pooler 6543）/ `DIRECT_URL`（pooler 5432）。Supabase の鍵類は `.env.local`。
+  - 接続: runtime の `DATABASE_URL` は **Supabase pooler 6543(transaction mode)** を使う。`DIRECT_URL` は migrate/introspection 用の session 接続。Vercel の `DATABASE_URL` が誤って 5432 を向いても、`lib/prisma.ts` で 6543 + `pgbouncer=true` + `connection_limit=1` に補正する。
   - Prisma スキーマは snake_case 実テーブルに `@@map`/`@map` でマッピング。
 - **層構成**:
   - `lib/repositories/*` … Prisma クエリ（データアクセス）

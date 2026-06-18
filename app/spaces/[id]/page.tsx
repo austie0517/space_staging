@@ -12,7 +12,7 @@ import { getBookingsForResourceCalendar } from "@/lib/repositories/bookingReposi
 import { toUISpace } from "@/lib/mappers/space";
 import { toUIReview } from "@/lib/mappers/review";
 import { toUISpaceField } from "@/lib/mappers/spaceField";
-import { toCalendarBooking } from "@/lib/mappers/booking";
+import { toCalendarBookingFromRow } from "@/lib/mappers/booking";
 import { SpaceDetailClient } from "./SpaceDetailClient";
 
 export const revalidate = 300;
@@ -53,7 +53,7 @@ export default async function SpaceDetailPage({
   space.minBookingHours = minBookingHours;
   space.resourceCategory = resourceMeta.resourceCategory;
   space.capacityUnit = resourceMeta.capacityUnit;
-  const bookings = bookingRows.map(toCalendarBooking);
+  const bookings = bookingRows.map(toCalendarBookingFromRow);
   const canRequestBooking = guest ? await isKycApproved(guest.userId) : false;
 
   return (

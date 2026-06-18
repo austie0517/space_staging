@@ -2,7 +2,7 @@ import { Badge, Icon } from "../../_components/ui";
 import { HostHeader } from "../../_components/HostHeader";
 import { HostNav } from "../../_components/HostNav";
 import { getCurrentHost } from "@/lib/repositories/hostRepository";
-import { getBookingsByHost } from "@/lib/repositories/bookingRepository";
+import { getHostBookingEarningsSummary } from "@/lib/repositories/bookingRepository";
 import { getSettlementsByHost } from "@/lib/repositories/adminRepository";
 
 export const dynamic = "force-dynamic";
@@ -12,19 +12,23 @@ const pad = (n: number) => String(n).padStart(2, "0");
 
 export default async function HostEarningsPage() {
   const host = await getCurrentHost();
-  const bookings = host ? await getBookingsByHost(host.id) : [];
-  const settlements = host ? await getSettlementsByHost(host.id) : [];
+  const [earningsByStatus, settlements] = host
+    ? await Promise.all([
+        getHostBookingEarningsSummary(host.id),
+        getSettlementsByHost(host.id),
+      ])
+    : [[], []];
 
-  // Host take per booking = total paid by guest − platform fee.
-  const earn = (b: (typeof bookings)[number]) =>
-    Math.max(0, b.totalPrice - b.platformFee);
-  const sumBy = (statuses: string[]) =>
-    bookings
-      .filter((b) => statuses.includes(b.status))
-      .reduce((s, b) => s + earn(b), 0);
+  const earningsMap = new Map(
+    earningsByStatus.map((row) => [
+      row.status,
+      Math.max(0, (row._sum.totalPrice ?? 0) - (row._sum.platformFee ?? 0)),
+    ]),
+  );
 
-  const confirmed = sumBy(["approved", "completed"]);
-  const pending = sumBy(["pending"]);
+  const confirmed =
+    (earningsMap.get("approved") ?? 0) + (earningsMap.get("completed") ?? 0);
+  const pending = earningsMap.get("pending") ?? 0;
   const projected = confirmed + pending;
   const paidOut = settlements
     .filter((s) => s.status === "paid")

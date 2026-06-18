@@ -118,7 +118,7 @@ function CalendarSheet({
         onClick={onClose}
         className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm"
       />
-      <div className="relative z-10 w-full max-w-md rounded-t-2xl bg-surface-card p-4 shadow-[var(--shadow-soft)] sm:rounded-2xl">
+      <div className="relative z-10 w-full max-w-md rounded-t-2xl bg-surface-card p-4 shadow-soft sm:rounded-2xl">
         <div className="mb-4 flex items-center justify-between">
           <button
             type="button"

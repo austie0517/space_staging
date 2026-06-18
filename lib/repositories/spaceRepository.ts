@@ -47,9 +47,19 @@ const spaceDetailInclude = {
   images: true,
   options: true,
   tagRelations: { include: { tag: true } },
-  availabilities: true,
   reviews: {
-    include: { guest: { include: { user: true } } },
+    include: {
+      guest: {
+        include: {
+          user: {
+            select: {
+              name: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      },
+    },
     orderBy: { createdAt: "desc" },
   },
   spaceFields: {

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Badge, Button, ButtonLink, Icon } from "../../_components/ui";
 import { HostHeader } from "../../_components/HostHeader";
 import { HostNav } from "../../_components/HostNav";
-import { sampleHost } from "@/lib/sampleData";
+import { sampleHost } from "@/mock/users";
 
 export type HostProfile = {
   name: string;

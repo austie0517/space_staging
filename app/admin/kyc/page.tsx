@@ -29,7 +29,7 @@ export default function AdminKycPage() {
           return (
             <div
               key={k.id}
-              className="rounded-xl border border-border bg-surface-card p-4 shadow-[var(--shadow-card)]"
+              className="rounded-xl border border-border bg-surface-card p-4 shadow-card"
             >
               <div className="flex items-center gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}

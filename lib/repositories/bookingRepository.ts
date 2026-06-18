@@ -50,6 +50,62 @@ export type BookingWithRelations = Prisma.BookingGetPayload<{
   select: typeof bookingSelect;
 }>;
 
+const hostBookingListSelect = {
+  id: true,
+  spaceId: true,
+  guestId: true,
+  bookingLevel: true,
+  quantity: true,
+  startAt: true,
+  endAt: true,
+  totalPrice: true,
+  platformFee: true,
+  status: true,
+  discountNote: true,
+  space: {
+    select: {
+      name: true,
+      images: {
+        select: { imageUrl: true, isCover: true, sortOrder: true },
+      },
+    },
+  },
+  guest: {
+    select: {
+      user: {
+        select: {
+          name: true,
+          avatarUrl: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.BookingSelect;
+
+export type HostBookingListRow = Prisma.BookingGetPayload<{
+  select: typeof hostBookingListSelect;
+}>;
+
+const bookingCalendarSelect = {
+  id: true,
+  startAt: true,
+  endAt: true,
+  status: true,
+  guest: {
+    select: {
+      user: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.BookingSelect;
+
+export type CalendarBookingRow = Prisma.BookingGetPayload<{
+  select: typeof bookingCalendarSelect;
+}>;
+
 /** Create a booking. Caller supplies spaceId/guestId and the priced amounts. */
 export async function createBooking(data: Prisma.BookingUncheckedCreateInput) {
   return prisma.booking.create({ data });
@@ -203,7 +259,7 @@ export async function getBookingsForResourceCalendar(spaceId: string) {
   if (ids.length === 0) return [];
   return prisma.booking.findMany({
     where: { id: { in: ids } },
-    select: bookingSelect,
+    select: bookingCalendarSelect,
     orderBy: { startAt: "desc" },
   });
 }
@@ -214,5 +270,41 @@ export async function getBookingsByHost(hostId: string) {
     where: { space: { hostId } },
     select: bookingSelect,
     orderBy: { startAt: "desc" },
+  });
+}
+
+/** Pending bookings only, with full guest detail for the approval dialog. */
+export async function getPendingBookingsByHost(hostId: string) {
+  return prisma.booking.findMany({
+    where: { space: { hostId }, status: "pending" },
+    select: bookingSelect,
+    orderBy: { startAt: "desc" },
+  });
+}
+
+/** Confirmed/past list rows for the host booking index. */
+export async function getHostBookingList(hostId: string) {
+  return prisma.booking.findMany({
+    where: {
+      space: { hostId },
+      status: { in: ["approved", "completed"] },
+    },
+    select: hostBookingListSelect,
+    orderBy: { startAt: "desc" },
+  });
+}
+
+/** Aggregated earnings by status for the host earnings page. */
+export async function getHostBookingEarningsSummary(hostId: string) {
+  return prisma.booking.groupBy({
+    by: ["status"],
+    where: {
+      space: { hostId },
+      status: { in: ["pending", "approved", "completed"] },
+    },
+    _sum: {
+      totalPrice: true,
+      platformFee: true,
+    },
   });
 }

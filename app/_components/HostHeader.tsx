@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Icon } from "./ui";
-import { sampleHost } from "@/lib/sampleData";
+import { sampleHost } from "@/mock/users";
 
 /**
  * Mobile header for host pages: avatar + brand + my-page link. Hidden on
