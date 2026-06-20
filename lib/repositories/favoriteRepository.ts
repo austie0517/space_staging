@@ -11,10 +11,12 @@ const spaceInclude = {
 
 /** Space ids the user has favorited (for heart state across the app). */
 export async function getFavoriteSpaceIds(userId: string) {
-  const rows = await prisma.favorite.findMany({
-    where: { userId },
-    select: { spaceId: true },
-  });
+  const rows = await prisma.$queryRawUnsafe<Array<{ spaceId: string }>>(
+    `select space_id::text as "spaceId"
+       from public.favorites
+      where user_id = $1::uuid`,
+    userId,
+  );
   return rows.map((r) => r.spaceId);
 }
 

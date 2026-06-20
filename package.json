@@ -7,6 +7,7 @@
     "dev": "next dev --webpack --hostname 127.0.0.1 --port 3000",
     "build": "prisma generate && next build",
     "start": "next start",
+    "start:railway": "next start -p 8080 -H 0.0.0.0",
     "postinstall": "prisma generate",
     "lint": "eslint"
   },

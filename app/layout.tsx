@@ -9,6 +9,7 @@ const notoSansJP = Noto_Sans_JP({
   subsets: ["latin"],
   weight: ["400", "500", "700"],
   display: "swap",
+  preload: false,
 });
 
 // Headings — Zen Kaku Gothic New (geometric, confident).
@@ -17,6 +18,7 @@ const zenKaku = Zen_Kaku_Gothic_New({
   weight: ["500", "700"],
   subsets: ["latin"],
   display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {

@@ -42,6 +42,7 @@ function getRuntimeDatabaseUrl() {
 }
 
 const runtimeDatabaseUrl = getRuntimeDatabaseUrl();
+const enableQueryPerfLogging = process.env.NODE_ENV === "development";
 
 export const prisma =
   globalForPrisma.prisma ??
@@ -53,8 +54,23 @@ export const prisma =
           },
         }
       : {}),
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+    log: enableQueryPerfLogging
+      ? [{ emit: "event", level: "query" }, "error", "warn"]
+      : ["error"],
   });
+
+if (enableQueryPerfLogging) {
+  (prisma as PrismaClient & {
+    $on: (eventType: "query", callback: (event: {
+      duration: number;
+      query: string;
+    }) => void) => void;
+  }).$on("query", (event) => {
+    if (event.duration < 150) return;
+    const query = event.query.replace(/\s+/g, " ").trim().slice(0, 240);
+    console.log(`[prisma] ${event.duration}ms ${query}`);
+  });
+}
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 

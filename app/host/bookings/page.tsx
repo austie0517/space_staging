@@ -15,7 +15,7 @@ export default async function HostBookingsPage() {
     ? await (async () => {
         const [pendingRows, listRows] = await Promise.all([
           getPendingBookingsByHost(host.id),
-          getHostBookingList(host.id),
+          getHostBookingList(host.id, { take: 60 }),
         ]);
         return [
           ...pendingRows.map(toUIBooking),

@@ -43,13 +43,11 @@ function inBand(price: number, band: PriceBand): boolean {
 export function SpacesClient({
   initialSpaces,
   page,
-  total,
-  totalPages,
+  hasNext,
 }: {
   initialSpaces: Space[];
   page: number;
-  total: number;
-  totalPages: number;
+  hasNext: boolean;
 }) {
   const [category, setCategory] = useState("all");
   const [query, setQuery] = useState("");
@@ -188,28 +186,24 @@ export function SpacesClient({
 
         {/* Feed */}
         <section className="mt-6 grid grid-cols-1 gap-8 px-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((space) => (
-            <SpaceCard key={space.id} space={space} />
+          {filtered.map((space, index) => (
+            <SpaceCard key={space.id} space={space} eager={index === 0} />
           ))}
         </section>
 
         <div className="mt-6 px-4 text-sm text-on-surface-variant">
-          {total}件中 {initialSpaces.length}件表示・{page} / {totalPages}ページ
+          このページは {initialSpaces.length}件表示・{page}ページ目
         </div>
 
-        {totalPages > 1 && (
+        {(page > 1 || hasNext) && (
           <nav className="mt-4 flex flex-wrap items-center justify-center gap-2 px-4">
             <PageLink page={page - 1} disabled={page <= 1}>
               前へ
             </PageLink>
-            {Array.from({ length: totalPages }, (_, index) => index + 1)
-              .slice(Math.max(0, page - 3), Math.max(5, Math.min(totalPages, page + 2)))
-              .map((value) => (
-                <PageLink key={value} page={value} active={value === page}>
-                  {value}
-                </PageLink>
-              ))}
-            <PageLink page={page + 1} disabled={page >= totalPages}>
+            <span className="px-3 text-sm font-semibold text-on-surface-variant">
+              {page}
+            </span>
+            <PageLink page={page + 1} disabled={!hasNext}>
               次へ
             </PageLink>
           </nav>
@@ -257,7 +251,7 @@ function PageLink({
   );
 }
 
-function SpaceCard({ space }: { space: Space }) {
+function SpaceCard({ space, eager = false }: { space: Space; eager?: boolean }) {
   const { isFavorite, toggle } = useFavorites();
   const fav = isFavorite(space.id);
   return (
@@ -267,6 +261,8 @@ function SpaceCard({ space }: { space: Space }) {
           src={space.images[0]}
           alt={space.title}
           fill
+          priority={eager}
+          loading={eager ? "eager" : "lazy"}
           quality={55}
           sizes="(max-width: 639px) 92vw, (max-width: 1023px) 46vw, 30vw"
           className="object-cover transition-transform duration-700 group-hover:scale-105"

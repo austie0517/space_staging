@@ -3,6 +3,7 @@ import type { Booking, BookingStatus } from "@/types";
 import type {
   BookingWithRelations,
   CalendarBookingRow,
+  GuestBookingListRow,
   HostBookingListRow,
 } from "@/lib/repositories/bookingRepository";
 
@@ -135,6 +136,33 @@ export function toUIHostBookingListItem(b: HostBookingListRow): Booking {
       width: 160,
       quality: 55,
     }),
+    date: `${b.startAt.getFullYear()}年${b.startAt.getMonth() + 1}月${b.startAt.getDate()}日`,
+    start: hhmm(b.startAt),
+    end: hhmm(b.endAt),
+    hours,
+    total: b.totalPrice,
+    hostEarnings: Math.max(0, b.totalPrice - b.platformFee),
+    status: STATUS_MAP[b.status] ?? "pending",
+    message: b.discountNote ?? undefined,
+  };
+}
+
+export function toUIGuestBookingListItem(b: GuestBookingListRow): Booking {
+  const hours = Math.max(
+    0,
+    Math.round((b.endAt.getTime() - b.startAt.getTime()) / 3_600_000),
+  );
+  return {
+    id: b.id,
+    code: b.id.slice(0, 6).toUpperCase(),
+    spaceId: b.spaceId,
+    bookingLevel: (b.bookingLevel as "space" | "seat") ?? "space",
+    quantity: b.quantity ?? 1,
+    spaceTitle: b.space.name,
+    spaceImage: cover(b.space.images),
+    guestId: b.guestId,
+    guestName: "",
+    guestAvatar: "",
     date: `${b.startAt.getFullYear()}年${b.startAt.getMonth() + 1}月${b.startAt.getDate()}日`,
     start: hhmm(b.startAt),
     end: hhmm(b.endAt),

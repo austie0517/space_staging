@@ -106,6 +106,32 @@ export type CalendarBookingRow = Prisma.BookingGetPayload<{
   select: typeof bookingCalendarSelect;
 }>;
 
+const guestBookingListSelect = {
+  id: true,
+  spaceId: true,
+  guestId: true,
+  bookingLevel: true,
+  quantity: true,
+  startAt: true,
+  endAt: true,
+  totalPrice: true,
+  platformFee: true,
+  status: true,
+  discountNote: true,
+  space: {
+    select: {
+      name: true,
+      images: {
+        select: { imageUrl: true, isCover: true, sortOrder: true },
+      },
+    },
+  },
+} satisfies Prisma.BookingSelect;
+
+export type GuestBookingListRow = Prisma.BookingGetPayload<{
+  select: typeof guestBookingListSelect;
+}>;
+
 /** Create a booking. Caller supplies spaceId/guestId and the priced amounts. */
 export async function createBooking(data: Prisma.BookingUncheckedCreateInput) {
   return prisma.booking.create({ data });
@@ -220,6 +246,14 @@ export async function getBookingsByGuest(guestId: string) {
   });
 }
 
+export async function getGuestBookingList(guestId: string) {
+  return prisma.booking.findMany({
+    where: { guestId },
+    select: guestBookingListSelect,
+    orderBy: { startAt: "desc" },
+  });
+}
+
 /** Bookings for a single space (newest first). */
 export async function getBookingsBySpace(spaceId: string) {
   return prisma.booking.findMany({
@@ -283,7 +317,7 @@ export async function getPendingBookingsByHost(hostId: string) {
 }
 
 /** Confirmed/past list rows for the host booking index. */
-export async function getHostBookingList(hostId: string) {
+export async function getHostBookingList(hostId: string, params?: { take?: number }) {
   return prisma.booking.findMany({
     where: {
       space: { hostId },
@@ -291,6 +325,7 @@ export async function getHostBookingList(hostId: string) {
     },
     select: hostBookingListSelect,
     orderBy: { startAt: "desc" },
+    take: params?.take,
   });
 }
 

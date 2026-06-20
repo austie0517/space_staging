@@ -101,6 +101,15 @@ export function SpaceDetailClient({
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const hasPitch = Boolean(space.pitchTitle || space.pitchBody);
+  const bookingMap = useMemo(() => {
+    const map = new Map<string, CalendarBooking[]>();
+    for (const booking of bookings) {
+      const list = map.get(booking.ymd);
+      if (list) list.push(booking);
+      else map.set(booking.ymd, [booking]);
+    }
+    return map;
+  }, [bookings]);
 
   return (
     <div className="min-h-full pb-28">
@@ -223,7 +232,7 @@ export function SpaceDetailClient({
           <GuestAvailabilityCalendar
             minBookingHours={space.minBookingHours}
             availabilities={availabilities}
-            bookings={bookings}
+            bookingMap={bookingMap}
           />
         </section>
 
@@ -287,11 +296,11 @@ function ButtonLinkLike({ href }: { href: string }) {
 function GuestAvailabilityCalendar({
   minBookingHours,
   availabilities,
-  bookings,
+  bookingMap,
 }: {
   minBookingHours: number;
   availabilities: Availability[];
-  bookings: CalendarBooking[];
+  bookingMap: Map<string, CalendarBooking[]>;
 }) {
   const [month, setMonth] = useState(() => monthStart(new Date()));
   const [selected, setSelected] = useState(() => ymdOf(new Date()));
@@ -303,10 +312,11 @@ function GuestAvailabilityCalendar({
   const cells = useMemo(() => buildMonthCells(month), [month]);
   const selectedDate = dateFromYMD(selected);
   const selectedRule = availabilityFor(selectedDate, availabilities);
+  const selectedBookings = bookingMap.get(selected) ?? [];
   const selectedHasSlot =
     selectedRule !== null &&
     selectedDate >= today &&
-    hasOpenSlot(bookings, selected, selectedRule, minBookingHours);
+    hasOpenSlot(selectedBookings, selected, selectedRule, minBookingHours);
 
   const moveMonth = (delta: number) => {
     const next = new Date(month);
@@ -362,13 +372,12 @@ function GuestAvailabilityCalendar({
           const rule = availabilityFor(cell.date, availabilities);
           const isPast = cell.date < today;
           const isSelected = selected === value;
-          const hasBooking = bookings.some(
-            (booking) => booking.ymd === value && booking.status !== "cancelled",
-          );
+          const dayBookings = bookingMap.get(value) ?? [];
+          const hasBooking = dayBookings.some((booking) => booking.status !== "cancelled");
           const selectable =
             !isPast &&
             rule !== null &&
-            hasOpenSlot(bookings, value, rule, minBookingHours);
+            hasOpenSlot(dayBookings, value, rule, minBookingHours);
 
           return (
             <button

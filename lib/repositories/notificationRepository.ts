@@ -54,12 +54,26 @@ export async function getUnreadNotificationCounts(
 ) {
   const entries = await Promise.all(
     groups.map(async (group) => {
-      const count = await getUnreadNotificationCount(
+      const included = group.includedTypes ?? [];
+      const excluded = group.excludedTypes ?? [];
+      const rows = await prisma.$queryRawUnsafe<Array<{ count: number }>>(
+        `select count(*)::int as count
+           from public.notifications
+          where user_id = $1::uuid
+            and is_read is false
+            and (
+              coalesce(array_length($2::text[], 1), 0) = 0
+              or type = any($2::text[])
+            )
+            and not (
+              coalesce(array_length($3::text[], 1), 0) > 0
+              and type = any($3::text[])
+            )`,
         userId,
-        group.excludedTypes ?? [],
-        group.includedTypes ?? [],
+        included,
+        excluded,
       );
-      return [group.key, count] as const;
+      return [group.key, rows[0]?.count ?? 0] as const;
     }),
   );
   return Object.fromEntries(entries);

@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
+import { optimizeImageUrl } from "@/lib/imageUrl";
+import type { Review, Space, SpaceField } from "@/types";
 
 /**
  * Data access for spaces (Prisma → Supabase). Returns raw Prisma rows with the
@@ -103,6 +105,130 @@ export async function countPublishedSpaces() {
   });
 }
 
+type PublishedSpaceFeedRow = {
+  id: string;
+  title: string;
+  prefecture: string | null;
+  city: string | null;
+  town: string | null;
+  description: string | null;
+  pitchTitle: string | null;
+  pitchBody: string | null;
+  resourceCategory: string;
+  capacityUnit: string;
+  minBookingHours: number;
+  capacity: number | null;
+  spaceType: string;
+  status: string;
+  pricePerHour: number | null;
+  reviewCount: number;
+  rating: number | null;
+  amenities: string[] | null;
+  coverImageUrl: string | null;
+};
+
+const FEED_PLACEHOLDER =
+  "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80";
+const DETAIL_AVATAR_PLACEHOLDER =
+  "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80";
+
+export async function getPublishedSpaceFeed(params?: {
+  skip?: number;
+  take?: number;
+}): Promise<Space[]> {
+  const rows = await prisma.$queryRawUnsafe<PublishedSpaceFeedRow[]>(
+    `
+      select
+        s.id::text as "id",
+        s.name as "title",
+        s.prefecture,
+        s.city,
+        s.town,
+        s.description,
+        s.pitch_title as "pitchTitle",
+        s.pitch_body as "pitchBody",
+        s.resource_category as "resourceCategory",
+        s.capacity_unit as "capacityUnit",
+        s.min_booking_hours as "minBookingHours",
+        s.capacity,
+        s.space_type as "spaceType",
+        s.status,
+        (
+          select so.price
+          from public.space_options so
+          where so.space_id = s.id
+            and so.is_active is distinct from false
+          order by
+            case when so.price_type = 'hourly' then 0 else 1 end,
+            so.created_at asc
+          limit 1
+        ) as "pricePerHour",
+        (
+          select count(*)::int
+          from public.reviews r
+          where r.space_id = s.id
+        ) as "reviewCount",
+        (
+          select avg(r.rating)::float
+          from public.reviews r
+          where r.space_id = s.id
+        ) as "rating",
+        (
+          select array_agg(t.name order by t.name)
+          from public.space_tag_relations str
+          join public.space_tags t
+            on t.id = str.tag_id
+          where str.space_id = s.id
+        ) as "amenities",
+        (
+          select si.image_url
+          from public.space_images si
+          where si.space_id = s.id
+          order by
+            case when si.is_cover is true then 0 else 1 end,
+            coalesce(si.sort_order, 0) asc,
+            si.created_at asc
+          limit 1
+        ) as "coverImageUrl"
+      from public.spaces s
+      where s.status in ('approved', 'published')
+      order by s.created_at desc
+      offset $1
+      limit $2
+    `,
+    params?.skip ?? 0,
+    params?.take ?? 12,
+  );
+
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    area:
+      [row.prefecture, row.city, row.town].filter(Boolean).join("") || "場所未設定",
+    description: row.description ?? "",
+    pitchTitle: row.pitchTitle ?? "",
+    pitchBody: row.pitchBody ?? "",
+    resourceCategory: row.resourceCategory,
+    capacityUnit: row.capacityUnit,
+    pricePerHour: row.pricePerHour ?? 0,
+    minBookingHours: row.minBookingHours ?? 1,
+    capacity: row.capacity ?? 1,
+    rating: row.rating ? Math.round(row.rating * 10) / 10 : 0,
+    reviewCount: row.reviewCount ?? 0,
+    spaceType: row.spaceType,
+    images: [
+      optimizeImageUrl(row.coverImageUrl || FEED_PLACEHOLDER, {
+        width: 1200,
+        quality: 58,
+      }),
+    ],
+    amenities: row.amenities ?? [],
+    wifi: true,
+    parking: false,
+    published: row.status === "published" || row.status === "approved",
+  }));
+}
+
 /** All spaces owned by a host (host dashboard / management). */
 export async function getHostSpaces(hostId: string) {
   return prisma.space.findMany({
@@ -110,6 +236,97 @@ export async function getHostSpaces(hostId: string) {
     select: spaceCardSelect,
     orderBy: { createdAt: "desc" },
   });
+}
+
+export async function getHostSpaceFeed(hostId: string): Promise<Space[]> {
+  const rows = await prisma.$queryRawUnsafe<PublishedSpaceFeedRow[]>(
+    `
+      select
+        s.id::text as "id",
+        s.name as "title",
+        s.prefecture,
+        s.city,
+        s.town,
+        s.description,
+        s.pitch_title as "pitchTitle",
+        s.pitch_body as "pitchBody",
+        s.resource_category as "resourceCategory",
+        s.capacity_unit as "capacityUnit",
+        s.min_booking_hours as "minBookingHours",
+        s.capacity,
+        s.space_type as "spaceType",
+        s.status,
+        (
+          select so.price
+          from public.space_options so
+          where so.space_id = s.id
+            and so.is_active is distinct from false
+          order by
+            case when so.price_type = 'hourly' then 0 else 1 end,
+            so.created_at asc
+          limit 1
+        ) as "pricePerHour",
+        (
+          select count(*)::int
+          from public.reviews r
+          where r.space_id = s.id
+        ) as "reviewCount",
+        (
+          select avg(r.rating)::float
+          from public.reviews r
+          where r.space_id = s.id
+        ) as "rating",
+        (
+          select array_agg(t.name order by t.name)
+          from public.space_tag_relations str
+          join public.space_tags t
+            on t.id = str.tag_id
+          where str.space_id = s.id
+        ) as "amenities",
+        (
+          select si.image_url
+          from public.space_images si
+          where si.space_id = s.id
+          order by
+            case when si.is_cover is true then 0 else 1 end,
+            coalesce(si.sort_order, 0) asc,
+            si.created_at asc
+          limit 1
+        ) as "coverImageUrl"
+      from public.spaces s
+      where s.host_id = $1::uuid
+      order by s.created_at desc
+    `,
+    hostId,
+  );
+
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    area:
+      [row.prefecture, row.city, row.town].filter(Boolean).join("") || "場所未設定",
+    description: row.description ?? "",
+    pitchTitle: row.pitchTitle ?? "",
+    pitchBody: row.pitchBody ?? "",
+    resourceCategory: row.resourceCategory,
+    capacityUnit: row.capacityUnit,
+    pricePerHour: row.pricePerHour ?? 0,
+    minBookingHours: row.minBookingHours ?? 1,
+    capacity: row.capacity ?? 1,
+    rating: row.rating ? Math.round(row.rating * 10) / 10 : 0,
+    reviewCount: row.reviewCount ?? 0,
+    spaceType: row.spaceType,
+    images: [
+      optimizeImageUrl(row.coverImageUrl || FEED_PLACEHOLDER, {
+        width: 1200,
+        quality: 58,
+      }),
+    ],
+    amenities: row.amenities ?? [],
+    wifi: true,
+    parking: false,
+    published: row.status === "published" || row.status === "approved",
+  }));
 }
 
 /** Create a space. */
@@ -250,4 +467,225 @@ export async function getSpace(id: string) {
     where: { id },
     include: spaceDetailInclude,
   });
+}
+
+type SpaceDetailMainRow = {
+  id: string;
+  parentSpaceId: string | null;
+  title: string;
+  prefecture: string | null;
+  city: string | null;
+  town: string | null;
+  description: string | null;
+  pitchTitle: string | null;
+  pitchBody: string | null;
+  resourceCategory: string;
+  capacityUnit: string;
+  pricePerHour: number | null;
+  minBookingHours: number;
+  capacity: number | null;
+  rating: number | null;
+  reviewCount: number;
+  spaceType: string;
+  images: string[] | null;
+  amenities: string[] | null;
+  status: string;
+};
+
+type SpaceDetailReviewRow = {
+  id: string;
+  spaceId: string;
+  bookingId: string | null;
+  authorName: string;
+  rating: number;
+  body: string | null;
+  createdAtYear: number;
+  createdAtMonth: number;
+};
+
+type SpaceDetailFieldRow = {
+  id: string;
+  spaceId: string;
+  key: string;
+  label: string;
+  value: string | null;
+  isPublic: boolean;
+  order: number;
+  type: string;
+  options: unknown;
+};
+
+export async function getSpaceDetailPageData(id: string): Promise<{
+  parentSpaceId: string | null;
+  space: Space | null;
+  reviews: Review[];
+  fields: SpaceField[];
+}> {
+  const [mainRows, reviewRows, fieldRows] = await Promise.all([
+    prisma.$queryRawUnsafe<SpaceDetailMainRow[]>(
+      `
+        select
+          s.id::text as "id",
+          s.parent_space_id::text as "parentSpaceId",
+          s.name as "title",
+          s.prefecture,
+          s.city,
+          s.town,
+          s.description,
+          s.pitch_title as "pitchTitle",
+          s.pitch_body as "pitchBody",
+          s.resource_category as "resourceCategory",
+          s.capacity_unit as "capacityUnit",
+          s.min_booking_hours as "minBookingHours",
+          s.capacity,
+          s.space_type as "spaceType",
+          s.status,
+          (
+            select so.price
+            from public.space_options so
+            where so.space_id = s.id
+              and so.is_active is distinct from false
+            order by
+              case when so.price_type = 'hourly' then 0 else 1 end,
+              so.created_at asc
+            limit 1
+          ) as "pricePerHour",
+          (
+            select avg(r.rating)::float
+            from public.reviews r
+            where r.space_id = s.id
+          ) as "rating",
+          (
+            select count(*)::int
+            from public.reviews r
+            where r.space_id = s.id
+          ) as "reviewCount",
+          (
+            select array_agg(si.image_url order by
+              case when si.is_cover is true then 0 else 1 end,
+              coalesce(si.sort_order, 0) asc,
+              si.created_at asc
+            )
+            from public.space_images si
+            where si.space_id = s.id
+          ) as "images",
+          (
+            select array_agg(t.name order by t.name)
+            from public.space_tag_relations str
+            join public.space_tags t
+              on t.id = str.tag_id
+            where str.space_id = s.id
+          ) as "amenities"
+        from public.spaces s
+        where s.id = $1::uuid
+        limit 1
+      `,
+      id,
+    ),
+    prisma.$queryRawUnsafe<SpaceDetailReviewRow[]>(
+      `
+        select
+          r.id::text as "id",
+          r.space_id::text as "spaceId",
+          r.booking_id::text as "bookingId",
+          u.name as "authorName",
+          r.rating,
+          r.comment as "body",
+          extract(year from r.created_at)::int as "createdAtYear",
+          extract(month from r.created_at)::int as "createdAtMonth"
+        from public.reviews r
+        join public.guests g
+          on g.id = r.guest_id
+        join public.users u
+          on u.id = g.user_id
+        where r.space_id = $1::uuid
+        order by r.created_at desc
+      `,
+      id,
+    ),
+    prisma.$queryRawUnsafe<SpaceDetailFieldRow[]>(
+      `
+        select
+          sf.id::text as "id",
+          sf.space_id::text as "spaceId",
+          sf.field_key as "key",
+          sf.field_label as "label",
+          sf.field_value as "value",
+          sf.is_public as "isPublic",
+          sf.display_order as "order",
+          sf.field_type as "type",
+          sf.options
+        from public.space_fields sf
+        where sf.space_id = $1::uuid
+          and sf.is_public is true
+        order by sf.display_order asc
+      `,
+      id,
+    ),
+  ]);
+
+  const main = mainRows[0];
+  if (!main) {
+    return {
+      parentSpaceId: null,
+      space: null,
+      reviews: [],
+      fields: [],
+    };
+  }
+
+  return {
+    parentSpaceId: main.parentSpaceId,
+    space: {
+      id: main.id,
+      title: main.title,
+      area:
+        [main.prefecture, main.city, main.town].filter(Boolean).join("") ||
+        "場所未設定",
+      description: main.description ?? "",
+      pitchTitle: main.pitchTitle ?? "",
+      pitchBody: main.pitchBody ?? "",
+      resourceCategory: main.resourceCategory,
+      capacityUnit: main.capacityUnit,
+      pricePerHour: main.pricePerHour ?? 0,
+      minBookingHours: main.minBookingHours ?? 1,
+      capacity: main.capacity ?? 1,
+      rating: main.rating ? Math.round(main.rating * 10) / 10 : 0,
+      reviewCount: main.reviewCount ?? 0,
+      spaceType: main.spaceType,
+      images:
+        main.images?.length
+          ? main.images.map((imageUrl) =>
+              optimizeImageUrl(imageUrl, { width: 1200, quality: 58 }),
+            )
+          : [FEED_PLACEHOLDER],
+      amenities: main.amenities ?? [],
+      wifi: true,
+      parking: false,
+      published: main.status === "published" || main.status === "approved",
+    },
+    reviews: reviewRows.map((row) => ({
+      id: row.id,
+      spaceId: row.spaceId,
+      bookingId: row.bookingId ?? undefined,
+      authorName: row.authorName,
+      authorAvatar: DETAIL_AVATAR_PLACEHOLDER,
+      rating: row.rating,
+      body: row.body ?? "",
+      createdAt: `${row.createdAtYear}年${row.createdAtMonth}月`,
+    })),
+    fields: fieldRows.map((row) => ({
+      id: row.id,
+      spaceId: row.spaceId,
+      key: row.key,
+      label: row.label,
+      value: row.value ?? "",
+      isPublic: row.isPublic,
+      order: row.order,
+      type: row.type as SpaceField["type"],
+      options: Array.isArray(row.options)
+        ? (row.options as unknown[]).map(String)
+        : undefined,
+    })),
+  };
 }

@@ -12,7 +12,12 @@ export async function GET(request: Request) {
   }
 
   const userId = await getActorUserIdByRole(role as ActorRole);
-  if (!userId) return Response.json({ counts: {} });
+  if (!userId) {
+    return Response.json(
+      { counts: {} },
+      { headers: { "Cache-Control": "private, max-age=10, stale-while-revalidate=30" } },
+    );
+  }
 
   const groups: Array<{ key: string; includedTypes?: NotificationType[] }> =
     role === "guest"
@@ -25,5 +30,8 @@ export async function GET(request: Request) {
         : [{ key: "default" }];
 
   const counts = await getUnreadNotificationCounts(userId, groups);
-  return Response.json({ counts });
+  return Response.json(
+    { counts },
+    { headers: { "Cache-Control": "private, max-age=10, stale-while-revalidate=30" } },
+  );
 }
