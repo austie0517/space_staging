@@ -2,7 +2,10 @@ import { PrismaClient } from "@prisma/client";
 
 // Next.js dev hot-reload would otherwise spawn a new client per reload and
 // exhaust the Supabase connection pool. Reuse a single instance via globalThis.
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+const globalForPrisma = globalThis as unknown as {
+  prisma?: PrismaClient;
+  prismaConnectPromise?: Promise<void>;
+};
 
 function getRuntimeDatabaseUrl() {
   const raw = process.env.DATABASE_URL;
@@ -26,9 +29,16 @@ function getRuntimeDatabaseUrl() {
       url.searchParams.set("pgbouncer", "true");
     }
 
-    // Keep each serverless instance conservative with pooled connections.
+    // One pooled connection keeps instances conservative, but it also forces
+    // Prisma queries inside Promise.all(...) to serialize on a single lane.
+    // Allow a few connections by default so page-level parallel reads can
+    // actually run in parallel. Override explicitly via env when needed.
+    const defaultConnectionLimit =
+      process.env.PRISMA_CONNECTION_LIMIT ??
+      (process.env.NODE_ENV === "production" ? "3" : "6");
+
     if (!url.searchParams.has("connection_limit")) {
-      url.searchParams.set("connection_limit", "1");
+      url.searchParams.set("connection_limit", defaultConnectionLimit);
     }
 
     if (!url.searchParams.has("pool_timeout")) {
@@ -42,7 +52,10 @@ function getRuntimeDatabaseUrl() {
 }
 
 const runtimeDatabaseUrl = getRuntimeDatabaseUrl();
-const enableQueryPerfLogging = process.env.NODE_ENV === "development";
+const enablePerfLogging =
+  process.env.NODE_ENV === "development" ||
+  process.env.ENABLE_PROD_PERF_LOGS === "true";
+const enableQueryPerfLogging = enablePerfLogging;
 
 export const prisma =
   globalForPrisma.prisma ??
@@ -59,6 +72,25 @@ export const prisma =
       : ["error"],
   });
 
+export async function ensurePrismaConnected() {
+  if (!globalForPrisma.prismaConnectPromise) {
+    const startedAt = Date.now();
+    globalForPrisma.prismaConnectPromise = prisma
+      .$connect()
+      .then(() => {
+        if (enablePerfLogging) {
+          console.log(`[prisma] connect ${Date.now() - startedAt}ms`);
+        }
+      })
+      .catch((error) => {
+        globalForPrisma.prismaConnectPromise = undefined;
+        throw error;
+      });
+  }
+
+  await globalForPrisma.prismaConnectPromise;
+}
+
 if (enableQueryPerfLogging) {
   (prisma as PrismaClient & {
     $on: (eventType: "query", callback: (event: {
@@ -73,5 +105,8 @@ if (enableQueryPerfLogging) {
 }
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+void ensurePrismaConnected().catch((error) => {
+  console.error("[prisma] initial connect failed:", error);
+});
 
 export default prisma;

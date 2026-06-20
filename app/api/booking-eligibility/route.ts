@@ -1,7 +1,12 @@
 import { getCurrentGuestBookingEligibility } from "@/lib/repositories/kycRepository";
+import { measure } from "@/lib/perf";
 
 export async function GET() {
-  const result = await getCurrentGuestBookingEligibility();
+  const requestId = Math.random().toString(36).slice(2, 8);
+  console.log(`[booking-eligibility] request ${requestId}`);
+  const result = await measure(`/api/booking-eligibility data (${requestId})`, () =>
+    getCurrentGuestBookingEligibility(),
+  );
 
   return Response.json(
     result,

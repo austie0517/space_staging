@@ -1,5 +1,6 @@
 import { getActorUserIdByRole, type ActorRole } from "@/lib/currentActor";
 import { GUEST_VISIBLE_NOTIFICATION_TYPES } from "@/lib/notificationVisibility";
+import { measure } from "@/lib/perf";
 import { getUnreadNotificationCounts } from "@/lib/repositories/notificationRepository";
 import type { NotificationType } from "@/types";
 
@@ -11,7 +12,9 @@ export async function GET(request: Request) {
     return Response.json({ error: "Invalid role" }, { status: 400 });
   }
 
-  const userId = await getActorUserIdByRole(role as ActorRole);
+  const userId = await measure(`/api/notifications/summary actor(${role})`, () =>
+    getActorUserIdByRole(role as ActorRole),
+  );
   if (!userId) {
     return Response.json(
       { counts: {} },
@@ -29,7 +32,9 @@ export async function GET(request: Request) {
           ]
         : [{ key: "default" }];
 
-  const counts = await getUnreadNotificationCounts(userId, groups);
+  const counts = await measure(`/api/notifications/summary counts(${role})`, () =>
+    getUnreadNotificationCounts(userId, groups),
+  );
   return Response.json(
     { counts },
     { headers: { "Cache-Control": "private, max-age=10, stale-while-revalidate=30" } },

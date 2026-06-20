@@ -17,6 +17,8 @@ import {
 } from "@/lib/resourceClassification";
 
 const DOW = ["日", "月", "火", "水", "木", "金", "土"];
+let bookingEligibilityPromise: Promise<boolean> | null = null;
+
 const pad = (n: number) => String(n).padStart(2, "0");
 const ymdOf = (d: Date) =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -116,14 +118,23 @@ export function SpaceDetailClient({
 
     const loadEligibility = async () => {
       try {
-        const response = await fetch("/api/booking-eligibility", {
+        bookingEligibilityPromise ??= fetch("/api/booking-eligibility", {
           credentials: "same-origin",
           cache: "no-store",
-        });
-        if (!response.ok) throw new Error("Failed to fetch booking eligibility");
-        const data = (await response.json()) as { canRequestBooking?: boolean };
+        })
+          .then(async (response) => {
+            if (!response.ok) throw new Error("Failed to fetch booking eligibility");
+            const data = (await response.json()) as { canRequestBooking?: boolean };
+            return Boolean(data.canRequestBooking);
+          })
+          .catch((error) => {
+            bookingEligibilityPromise = null;
+            throw error;
+          });
+
+        const canBook = await bookingEligibilityPromise;
         if (!active) return;
-        setCanRequestBooking(Boolean(data.canRequestBooking));
+        setCanRequestBooking(canBook);
       } catch (error) {
         console.error("[booking-eligibility] failed:", error);
       } finally {

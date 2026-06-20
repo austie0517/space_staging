@@ -17,11 +17,17 @@ export default async function HostBookingsPage() {
   const hostId = await measure("getCurrentHostId(/host/bookings)", () => getCurrentHostId());
   const bookings = hostId
     ? await (async () => {
-        const [pendingRows, listRows] = await measure("/host/bookings data", () =>
-          Promise.all([
-            getPendingBookingsByHost(hostId),
-            getHostBookingList(hostId, { take: 60 }),
-          ]),
+        const [pendingRows, listRows] = await measure(
+          "/host/bookings data",
+          () =>
+            Promise.all([
+              measure(`getPendingBookingsByHost(${hostId})`, () =>
+                getPendingBookingsByHost(hostId),
+              ),
+              measure(`getHostBookingList(${hostId})`, () =>
+                getHostBookingList(hostId, { take: 60 }),
+              ),
+            ]),
         );
         return [
           ...pendingRows.map(toUIPendingHostBookingItem),

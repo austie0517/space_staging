@@ -43,12 +43,12 @@ export default async function HostSpacePage({
     `/host/spaces/${id} parallel data`,
     () =>
       Promise.all([
-        getUIAvailabilities(id),
-        getSpaceFields(id),
-        getHostSpaceBookingList(id),
-        getBookingsBySpaceForHost(id),
-        getAllTags(),
-        getSpaceTagIds(id),
+        measure(`getUIAvailabilities(${id})`, () => getUIAvailabilities(id)),
+        measure(`getSpaceFields(${id})`, () => getSpaceFields(id)),
+        measure(`getHostSpaceBookingList(${id})`, () => getHostSpaceBookingList(id)),
+        measure(`getBookingsBySpaceForHost(${id})`, () => getBookingsBySpaceForHost(id)),
+        measure("getAllTags()", () => getAllTags()),
+        measure(`getSpaceTagIds(${id})`, () => getSpaceTagIds(id)),
       ]),
   );
   const fields = fieldsRows.map(toUISpaceField);

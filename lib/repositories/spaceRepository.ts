@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { optimizeImageUrl } from "@/lib/imageUrl";
@@ -132,10 +133,10 @@ const FEED_PLACEHOLDER =
 const DETAIL_AVATAR_PLACEHOLDER =
   "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80";
 
-export async function getPublishedSpaceFeed(params?: {
-  skip?: number;
-  take?: number;
-}): Promise<Space[]> {
+const getPublishedSpaceFeedCached = cache(async function getPublishedSpaceFeedCached(
+  skip: number,
+  take: number,
+): Promise<Space[]> {
   const rows = await prisma.$queryRawUnsafe<PublishedSpaceFeedRow[]>(
     `
       select
@@ -196,8 +197,8 @@ export async function getPublishedSpaceFeed(params?: {
       offset $1
       limit $2
     `,
-    params?.skip ?? 0,
-    params?.take ?? 12,
+    skip,
+    take,
   );
 
   return rows.map((row) => ({
@@ -227,6 +228,13 @@ export async function getPublishedSpaceFeed(params?: {
     parking: false,
     published: row.status === "published" || row.status === "approved",
   }));
+});
+
+export async function getPublishedSpaceFeed(params?: {
+  skip?: number;
+  take?: number;
+}): Promise<Space[]> {
+  return getPublishedSpaceFeedCached(params?.skip ?? 0, params?.take ?? 12);
 }
 
 /** All spaces owned by a host (host dashboard / management). */
@@ -238,7 +246,9 @@ export async function getHostSpaces(hostId: string) {
   });
 }
 
-export async function getHostSpaceFeed(hostId: string): Promise<Space[]> {
+const getHostSpaceFeedCached = cache(async function getHostSpaceFeedCached(
+  hostId: string,
+): Promise<Space[]> {
   const rows = await prisma.$queryRawUnsafe<PublishedSpaceFeedRow[]>(
     `
       select
@@ -327,6 +337,10 @@ export async function getHostSpaceFeed(hostId: string): Promise<Space[]> {
     parking: false,
     published: row.status === "published" || row.status === "approved",
   }));
+});
+
+export async function getHostSpaceFeed(hostId: string): Promise<Space[]> {
+  return getHostSpaceFeedCached(hostId);
 }
 
 /** Create a space. */
