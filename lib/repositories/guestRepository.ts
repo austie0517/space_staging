@@ -16,12 +16,23 @@ export const getCurrentGuest = cache(async function getCurrentGuest() {
 });
 
 export const getCurrentGuestUserId = cache(async function getCurrentGuestUserId() {
-  const guest = await prisma.guest.findFirst({
-    ...(DEMO_GUEST_ID ? { where: { id: DEMO_GUEST_ID } } : {}),
-    orderBy: { createdAt: "asc" },
-    select: { userId: true },
-  });
-  return guest?.userId ?? null;
+  const rows = await prisma.$queryRawUnsafe<Array<{ userId: string }>>(
+    DEMO_GUEST_ID
+      ? `
+        select user_id::text as "userId"
+        from public.guests
+        where id = $1::uuid
+        limit 1
+      `
+      : `
+        select user_id::text as "userId"
+        from public.guests
+        order by created_at asc
+        limit 1
+      `,
+    ...(DEMO_GUEST_ID ? [DEMO_GUEST_ID] : []),
+  );
+  return rows[0]?.userId ?? null;
 });
 
 /** Set a user's avatar URL. */

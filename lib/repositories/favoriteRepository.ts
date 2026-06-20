@@ -20,6 +20,32 @@ export async function getFavoriteSpaceIds(userId: string) {
   return rows.map((r) => r.spaceId);
 }
 
+export async function getCurrentGuestFavoriteSpaceIds() {
+  const rows = await prisma.$queryRawUnsafe<Array<{ spaceId: string }>>(
+    process.env.DEMO_GUEST_ID
+      ? `
+        select f.space_id::text as "spaceId"
+        from public.favorites f
+        join public.guests g
+          on g.user_id = f.user_id
+        where g.id = $1::uuid
+      `
+      : `
+        with current_guest as (
+          select user_id
+          from public.guests
+          order by created_at asc
+          limit 1
+        )
+        select f.space_id::text as "spaceId"
+        from public.favorites f
+        where f.user_id = (select user_id from current_guest)
+      `,
+    ...(process.env.DEMO_GUEST_ID ? [process.env.DEMO_GUEST_ID] : []),
+  );
+  return rows.map((row) => row.spaceId);
+}
+
 /** The user's favorited spaces, newest first (for /me/favorites). */
 export async function getFavoriteSpaces(userId: string) {
   const rows = await prisma.favorite.findMany({

@@ -4,6 +4,7 @@ import type {
   BookingWithRelations,
   CalendarBookingRow,
   GuestBookingListRow,
+  HostSpaceBookingListRow,
   HostBookingListRow,
   PendingHostBookingRow,
 } from "@/lib/repositories/bookingRepository";
@@ -201,6 +202,36 @@ export function toUIPendingHostBookingItem(b: PendingHostBookingRow): Booking {
     guestUsageCount: b.guestUsageCount ?? 0,
     guestRating: b.guestRating ? Math.round(b.guestRating * 10) / 10 : 0,
     guestReviewCount: b.guestReviewCount ?? 0,
+    date: `${b.startAt.getFullYear()}年${b.startAt.getMonth() + 1}月${b.startAt.getDate()}日`,
+    start: hhmm(b.startAt),
+    end: hhmm(b.endAt),
+    hours,
+    total: b.totalPrice,
+    hostEarnings: Math.max(0, b.totalPrice - b.platformFee),
+    status: STATUS_MAP[b.status] ?? "pending",
+    message: b.discountNote ?? undefined,
+  };
+}
+
+export function toUIHostSpaceBookingListItem(b: HostSpaceBookingListRow): Booking {
+  const hours = Math.max(
+    0,
+    Math.round((b.endAt.getTime() - b.startAt.getTime()) / 3_600_000),
+  );
+  return {
+    id: b.id,
+    code: b.id.slice(0, 6).toUpperCase(),
+    spaceId: b.spaceId,
+    bookingLevel: (b.bookingLevel as "space" | "seat") ?? "space",
+    quantity: b.quantity ?? 1,
+    spaceTitle: b.spaceTitle,
+    spaceImage: COVER_PLACEHOLDER,
+    guestId: b.guestId,
+    guestName: b.guestName,
+    guestAvatar: optimizeImageUrl(b.guestAvatar || AVATAR_PLACEHOLDER, {
+      width: 160,
+      quality: 55,
+    }),
     date: `${b.startAt.getFullYear()}年${b.startAt.getMonth() + 1}月${b.startAt.getDate()}日`,
     start: hhmm(b.startAt),
     end: hhmm(b.endAt),

@@ -164,6 +164,23 @@ export type PendingHostBookingRow = {
   guestReviewCount: number;
 };
 
+export type HostSpaceBookingListRow = {
+  id: string;
+  spaceId: string;
+  guestId: string;
+  bookingLevel: string | null;
+  quantity: number | null;
+  startAt: Date;
+  endAt: Date;
+  totalPrice: number;
+  platformFee: number;
+  status: string;
+  discountNote: string | null;
+  spaceTitle: string;
+  guestName: string;
+  guestAvatar: string | null;
+};
+
 /** Create a booking. Caller supplies spaceId/guestId and the priced amounts. */
 export async function createBooking(data: Prisma.BookingUncheckedCreateInput) {
   return prisma.booking.create({ data });
@@ -451,6 +468,36 @@ export async function getBookingsBySpaceForHost(spaceId: string) {
           from public.reviews rv
           where rv.guest_id = g.id
         ) as "guestReviewCount"
+      from public.bookings b
+      join public.spaces s on s.id = b.space_id
+      join public.guests g on g.id = b.guest_id
+      join public.users u on u.id = g.user_id
+      where b.space_id = $1::uuid
+        and b.status = 'pending'
+      order by b.start_at desc
+    `,
+    spaceId,
+  );
+}
+
+export async function getHostSpaceBookingList(spaceId: string) {
+  return prisma.$queryRawUnsafe<HostSpaceBookingListRow[]>(
+    `
+      select
+        b.id::text as "id",
+        b.space_id::text as "spaceId",
+        b.guest_id::text as "guestId",
+        b.booking_level as "bookingLevel",
+        b.quantity as "quantity",
+        b.start_at as "startAt",
+        b.end_at as "endAt",
+        b.total_price as "totalPrice",
+        b.platform_fee as "platformFee",
+        b.status as "status",
+        b.discount_note as "discountNote",
+        s.name as "spaceTitle",
+        u.name as "guestName",
+        u.avatar_url as "guestAvatar"
       from public.bookings b
       join public.spaces s on s.id = b.space_id
       join public.guests g on g.id = b.guest_id

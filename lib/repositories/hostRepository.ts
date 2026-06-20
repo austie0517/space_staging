@@ -15,6 +15,46 @@ export const getCurrentHost = cache(async function getCurrentHost() {
   });
 });
 
+export const getCurrentHostId = cache(async function getCurrentHostId() {
+  const rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+    DEMO_HOST_ID
+      ? `
+        select id::text as "id"
+        from public.hosts
+        where id = $1::uuid
+        limit 1
+      `
+      : `
+        select id::text as "id"
+        from public.hosts
+        order by created_at asc
+        limit 1
+      `,
+    ...(DEMO_HOST_ID ? [DEMO_HOST_ID] : []),
+  );
+  return rows[0]?.id ?? null;
+});
+
+export const getCurrentHostUserId = cache(async function getCurrentHostUserId() {
+  const rows = await prisma.$queryRawUnsafe<Array<{ userId: string }>>(
+    DEMO_HOST_ID
+      ? `
+        select user_id::text as "userId"
+        from public.hosts
+        where id = $1::uuid
+        limit 1
+      `
+      : `
+        select user_id::text as "userId"
+        from public.hosts
+        order by created_at asc
+        limit 1
+      `,
+    ...(DEMO_HOST_ID ? [DEMO_HOST_ID] : []),
+  );
+  return rows[0]?.userId ?? null;
+});
+
 export const getCurrentHostWithAddress = cache(async function getCurrentHostWithAddress() {
   const host = await prisma.host.findFirst({
     ...(DEMO_HOST_ID ? { where: { id: DEMO_HOST_ID } } : {}),

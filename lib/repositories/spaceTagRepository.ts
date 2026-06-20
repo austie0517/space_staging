@@ -1,11 +1,12 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 
 /** Full amenity catalog (templates), ordered by category then name. */
-export async function getAllTags() {
+export const getAllTags = cache(async function getAllTags() {
   return prisma.spaceTag.findMany({
     orderBy: [{ category: "asc" }, { name: "asc" }],
   });
-}
+});
 
 /** Tag ids currently attached to a space. */
 export async function getSpaceTagIds(spaceId: string) {

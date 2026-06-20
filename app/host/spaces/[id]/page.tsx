@@ -3,9 +3,16 @@ import { getHostSpacePageData } from "@/lib/repositories/spaceRepository";
 import { getSpaceFields } from "@/lib/repositories/spaceFieldRepository";
 import { getUIAvailabilities } from "@/lib/repositories/availabilityRepository";
 import { getAllTags, getSpaceTagIds } from "@/lib/repositories/spaceTagRepository";
-import { getBookingsBySpaceForHost } from "@/lib/repositories/bookingRepository";
+import {
+  getBookingsBySpaceForHost,
+  getHostSpaceBookingList,
+} from "@/lib/repositories/bookingRepository";
 import { toUISpaceField } from "@/lib/mappers/spaceField";
-import { toCalendarBookingFromRow, toUIPendingHostBookingItem } from "@/lib/mappers/booking";
+import {
+  toCalendarBookingFromRow,
+  toUIHostSpaceBookingListItem,
+  toUIPendingHostBookingItem,
+} from "@/lib/mappers/booking";
 import { HostSpaceClient } from "./HostSpaceClient";
 import { measure } from "@/lib/perf";
 
@@ -32,22 +39,24 @@ export default async function HostSpacePage({
     );
   }
 
-  const [availabilities, fieldsRows, rawBookings, allTags, tagIds] = await measure(
+  const [availabilities, fieldsRows, listRows, pendingRows, allTags, tagIds] = await measure(
     `/host/spaces/${id} parallel data`,
     () =>
       Promise.all([
         getUIAvailabilities(id),
         getSpaceFields(id),
+        getHostSpaceBookingList(id),
         getBookingsBySpaceForHost(id),
         getAllTags(),
         getSpaceTagIds(id),
       ]),
   );
   const fields = fieldsRows.map(toUISpaceField);
-  const upcoming = rawBookings
-    .map(toUIPendingHostBookingItem)
+  const pendingById = new Map(pendingRows.map((row) => [row.id, toUIPendingHostBookingItem(row)]));
+  const upcoming = listRows
+    .map((row) => pendingById.get(row.id) ?? toUIHostSpaceBookingListItem(row))
     .filter((b) => b.status !== "completed" && b.status !== "cancelled");
-  const calendarBookings = rawBookings.map((booking) =>
+  const calendarBookings = listRows.map((booking) =>
     toCalendarBookingFromRow({
       id: booking.id,
       startAt: booking.startAt,

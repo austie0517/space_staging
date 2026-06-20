@@ -1,4 +1,4 @@
-import { getCurrentHost } from "@/lib/repositories/hostRepository";
+import { getCurrentHostId } from "@/lib/repositories/hostRepository";
 import {
   getHostBookingList,
   getPendingBookingsByHost,
@@ -8,18 +8,21 @@ import {
   toUIPendingHostBookingItem,
 } from "@/lib/mappers/booking";
 import { HostBookingsClient } from "./HostBookingsClient";
+import { measure } from "@/lib/perf";
 
 // Reads live data on each request (Prisma → Supabase).
 export const dynamic = "force-dynamic";
 
 export default async function HostBookingsPage() {
-  const host = await getCurrentHost();
-  const bookings = host
+  const hostId = await measure("getCurrentHostId(/host/bookings)", () => getCurrentHostId());
+  const bookings = hostId
     ? await (async () => {
-        const [pendingRows, listRows] = await Promise.all([
-          getPendingBookingsByHost(host.id),
-          getHostBookingList(host.id, { take: 60 }),
-        ]);
+        const [pendingRows, listRows] = await measure("/host/bookings data", () =>
+          Promise.all([
+            getPendingBookingsByHost(hostId),
+            getHostBookingList(hostId, { take: 60 }),
+          ]),
+        );
         return [
           ...pendingRows.map(toUIPendingHostBookingItem),
           ...listRows.map(toUIHostBookingListItem),

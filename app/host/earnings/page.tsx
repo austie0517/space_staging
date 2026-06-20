@@ -1,9 +1,10 @@
 import { Badge, Icon } from "../../_components/ui";
 import { HostHeader } from "../../_components/HostHeader";
 import { HostNav } from "../../_components/HostNav";
-import { getCurrentHost } from "@/lib/repositories/hostRepository";
+import { getCurrentHostId } from "@/lib/repositories/hostRepository";
 import { getHostBookingEarningsSummary } from "@/lib/repositories/bookingRepository";
 import { getSettlementsByHost } from "@/lib/repositories/adminRepository";
+import { measure } from "@/lib/perf";
 
 export const dynamic = "force-dynamic";
 
@@ -11,12 +12,14 @@ const yen = (n: number) => `¥${n.toLocaleString()}`;
 const pad = (n: number) => String(n).padStart(2, "0");
 
 export default async function HostEarningsPage() {
-  const host = await getCurrentHost();
-  const [earningsByStatus, settlements] = host
-    ? await Promise.all([
-        getHostBookingEarningsSummary(host.id),
-        getSettlementsByHost(host.id),
-      ])
+  const hostId = await measure("getCurrentHostId(/host/earnings)", () => getCurrentHostId());
+  const [earningsByStatus, settlements] = hostId
+    ? await measure("/host/earnings data", () =>
+        Promise.all([
+          getHostBookingEarningsSummary(hostId),
+          getSettlementsByHost(hostId),
+        ]),
+      )
     : [[], []];
 
   const earningsMap = new Map(
