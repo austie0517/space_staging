@@ -15,6 +15,15 @@ export const getCurrentGuest = cache(async function getCurrentGuest() {
   });
 });
 
+export const getCurrentGuestUserId = cache(async function getCurrentGuestUserId() {
+  const guest = await prisma.guest.findFirst({
+    ...(DEMO_GUEST_ID ? { where: { id: DEMO_GUEST_ID } } : {}),
+    orderBy: { createdAt: "asc" },
+    select: { userId: true },
+  });
+  return guest?.userId ?? null;
+});
+
 /** Set a user's avatar URL. */
 export async function setUserAvatar(userId: string, avatarUrl: string) {
   return prisma.user.update({ where: { id: userId }, data: { avatarUrl } });

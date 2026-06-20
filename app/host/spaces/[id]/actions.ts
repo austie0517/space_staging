@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
-  getSpace,
+  getSpaceStatusWithHostUser,
   updateSpace,
   updateSpaceMinBookingHours,
   updateSpaceResourceClassification,
@@ -73,7 +73,7 @@ export async function saveSpaceSettingsAction(input: {
   }
   const opt = (s: string) => (s.trim() ? s.trim() : null);
   try {
-    const current = await getSpace(input.spaceId);
+    const current = await getSpaceStatusWithHostUser(input.spaceId);
     await updateSpace(input.spaceId, {
       name: input.name.trim(),
       capacity: input.capacity,
@@ -103,7 +103,7 @@ export async function saveSpaceSettingsAction(input: {
       !["approved", "published"].includes(current.status)
     ) {
       await notifySpaceApproved({
-        hostUserId: current.host.userId,
+        hostUserId: current.hostUserId,
         spaceName: input.name.trim(),
       });
     }

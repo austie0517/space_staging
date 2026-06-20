@@ -3,7 +3,10 @@ import {
   getHostBookingList,
   getPendingBookingsByHost,
 } from "@/lib/repositories/bookingRepository";
-import { toUIBooking, toUIHostBookingListItem } from "@/lib/mappers/booking";
+import {
+  toUIHostBookingListItem,
+  toUIPendingHostBookingItem,
+} from "@/lib/mappers/booking";
 import { HostBookingsClient } from "./HostBookingsClient";
 
 // Reads live data on each request (Prisma → Supabase).
@@ -18,7 +21,7 @@ export default async function HostBookingsPage() {
           getHostBookingList(host.id, { take: 60 }),
         ]);
         return [
-          ...pendingRows.map(toUIBooking),
+          ...pendingRows.map(toUIPendingHostBookingItem),
           ...listRows.map(toUIHostBookingListItem),
         ];
       })()

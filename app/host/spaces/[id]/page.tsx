@@ -1,17 +1,13 @@
 import Link from "next/link";
-import {
-  getSpace,
-  getSpaceMinBookingHours,
-  getSpaceResourceMeta,
-} from "@/lib/repositories/spaceRepository";
+import { getHostSpacePageData } from "@/lib/repositories/spaceRepository";
 import { getSpaceFields } from "@/lib/repositories/spaceFieldRepository";
 import { getUIAvailabilities } from "@/lib/repositories/availabilityRepository";
 import { getAllTags, getSpaceTagIds } from "@/lib/repositories/spaceTagRepository";
-import { getBookingsBySpace } from "@/lib/repositories/bookingRepository";
-import { toUISpace } from "@/lib/mappers/space";
+import { getBookingsBySpaceForHost } from "@/lib/repositories/bookingRepository";
 import { toUISpaceField } from "@/lib/mappers/spaceField";
-import { toUIBooking, toCalendarBooking } from "@/lib/mappers/booking";
+import { toCalendarBookingFromRow, toUIPendingHostBookingItem } from "@/lib/mappers/booking";
 import { HostSpaceClient } from "./HostSpaceClient";
+import { measure } from "@/lib/perf";
 
 // Reads live data on each request (Prisma → Supabase).
 export const dynamic = "force-dynamic";
@@ -22,9 +18,10 @@ export default async function HostSpacePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const row = await getSpace(id);
+  const detail = await measure(`getHostSpacePageData(${id})`, () => getHostSpacePageData(id));
+  const { space, published, address, imageUrls } = detail;
 
-  if (!row) {
+  if (!space) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4">
         <p className="text-on-surface-variant">スペースが見つかりませんでした。</p>
@@ -35,37 +32,36 @@ export default async function HostSpacePage({
     );
   }
 
-  const space = toUISpace(row);
-  space.minBookingHours = await getSpaceMinBookingHours(id);
-  const resourceMeta = await getSpaceResourceMeta(id);
-  space.resourceCategory = resourceMeta.resourceCategory;
-  space.capacityUnit = resourceMeta.capacityUnit;
-  const published = row.status === "approved";
-  const address = {
-    zipcode: row.zipcode ?? "",
-    prefecture: row.prefecture ?? "",
-    city: row.city ?? "",
-    town: row.town ?? "",
-    building: row.building ?? "",
-  };
-  const imageUrls = [...row.images]
-    .sort(
-      (a, b) =>
-        Number(b.isCover) - Number(a.isCover) ||
-        (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
-    )
-    .map((image) => image.imageUrl);
-  const availabilities = await getUIAvailabilities(id);
-  const fields = (await getSpaceFields(id)).map(toUISpaceField);
-  const rawBookings = await getBookingsBySpace(id);
+  const [availabilities, fieldsRows, rawBookings, allTags, tagIds] = await measure(
+    `/host/spaces/${id} parallel data`,
+    () =>
+      Promise.all([
+        getUIAvailabilities(id),
+        getSpaceFields(id),
+        getBookingsBySpaceForHost(id),
+        getAllTags(),
+        getSpaceTagIds(id),
+      ]),
+  );
+  const fields = fieldsRows.map(toUISpaceField);
   const upcoming = rawBookings
-    .map(toUIBooking)
+    .map(toUIPendingHostBookingItem)
     .filter((b) => b.status !== "completed" && b.status !== "cancelled");
-  const calendarBookings = rawBookings.map(toCalendarBooking);
-  const allTags = await getAllTags();
-  const tagIds = await getSpaceTagIds(id);
+  const calendarBookings = rawBookings.map((booking) =>
+    toCalendarBookingFromRow({
+      id: booking.id,
+      startAt: booking.startAt,
+      endAt: booking.endAt,
+      status: booking.status,
+      guest: {
+        user: {
+          name: booking.guestName,
+        },
+      },
+    }),
+  );
 
-  return (
+  return measure(`/host/spaces/${id}`, async () => (
     <HostSpaceClient
       space={space}
       published={published}
@@ -78,5 +74,5 @@ export default async function HostSpacePage({
       allTags={allTags}
       tagIds={tagIds}
     />
-  );
+  ));
 }

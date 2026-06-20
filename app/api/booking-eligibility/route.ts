@@ -1,17 +1,17 @@
-import { getCurrentGuest } from "@/lib/repositories/guestRepository";
+import { getCurrentGuestUserId } from "@/lib/repositories/guestRepository";
 import { isKycApproved } from "@/lib/repositories/kycRepository";
 
 export async function GET() {
-  const guest = await getCurrentGuest();
+  const userId = await getCurrentGuestUserId();
 
-  if (!guest) {
+  if (!userId) {
     return Response.json(
       { canRequestBooking: false, requiresLogin: true, requiresKyc: false },
       { headers: { "Cache-Control": "private, max-age=10, stale-while-revalidate=30" } },
     );
   }
 
-  const approved = await isKycApproved(guest.userId);
+  const approved = await isKycApproved(userId);
 
   return Response.json(
     {

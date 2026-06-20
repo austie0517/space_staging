@@ -140,6 +140,30 @@ export type GuestBookingListRow = Prisma.BookingGetPayload<{
   select: typeof guestBookingListSelect;
 }>;
 
+export type PendingHostBookingRow = {
+  id: string;
+  spaceId: string;
+  guestId: string;
+  bookingLevel: string | null;
+  quantity: number | null;
+  startAt: Date;
+  endAt: Date;
+  totalPrice: number;
+  platformFee: number;
+  status: string;
+  discountNote: string | null;
+  spaceTitle: string;
+  guestName: string;
+  guestAvatar: string | null;
+  guestProfession: string | null;
+  guestLicense: string | null;
+  guestVerified: boolean;
+  guestJoinedAt: Date;
+  guestUsageCount: number;
+  guestRating: number | null;
+  guestReviewCount: number;
+};
+
 /** Create a booking. Caller supplies spaceId/guestId and the priced amounts. */
 export async function createBooking(data: Prisma.BookingUncheckedCreateInput) {
   return prisma.booking.create({ data });
@@ -330,11 +354,112 @@ export async function getBookingsByHost(hostId: string) {
 
 /** Pending bookings only, with full guest detail for the approval dialog. */
 export async function getPendingBookingsByHost(hostId: string) {
-  return prisma.booking.findMany({
-    where: { space: { hostId }, status: "pending" },
-    select: bookingSelect,
-    orderBy: { startAt: "desc" },
-  });
+  return prisma.$queryRawUnsafe<PendingHostBookingRow[]>(
+    `
+      select
+        b.id::text as "id",
+        b.space_id::text as "spaceId",
+        b.guest_id::text as "guestId",
+        b.booking_level as "bookingLevel",
+        b.quantity as "quantity",
+        b.start_at as "startAt",
+        b.end_at as "endAt",
+        b.total_price as "totalPrice",
+        b.platform_fee as "platformFee",
+        b.status as "status",
+        b.discount_note as "discountNote",
+        s.name as "spaceTitle",
+        u.name as "guestName",
+        u.avatar_url as "guestAvatar",
+        g.profession as "guestProfession",
+        g.license as "guestLicense",
+        exists(
+          select 1
+          from public.kyc_submissions ks
+          where ks.user_id = u.id
+            and ks.status = 'approved'
+        ) as "guestVerified",
+        g.created_at as "guestJoinedAt",
+        (
+          select count(*)::int
+          from public.bookings gb
+          where gb.guest_id = g.id
+            and gb.status not in ('cancelled', 'rejected')
+        ) as "guestUsageCount",
+        (
+          select avg(rv.rating)::float
+          from public.reviews rv
+          where rv.guest_id = g.id
+        ) as "guestRating",
+        (
+          select count(*)::int
+          from public.reviews rv
+          where rv.guest_id = g.id
+        ) as "guestReviewCount"
+      from public.bookings b
+      join public.spaces s on s.id = b.space_id
+      join public.guests g on g.id = b.guest_id
+      join public.users u on u.id = g.user_id
+      where s.host_id = $1::uuid
+        and b.status = 'pending'
+      order by b.start_at desc
+    `,
+    hostId,
+  );
+}
+
+export async function getBookingsBySpaceForHost(spaceId: string) {
+  return prisma.$queryRawUnsafe<PendingHostBookingRow[]>(
+    `
+      select
+        b.id::text as "id",
+        b.space_id::text as "spaceId",
+        b.guest_id::text as "guestId",
+        b.booking_level as "bookingLevel",
+        b.quantity as "quantity",
+        b.start_at as "startAt",
+        b.end_at as "endAt",
+        b.total_price as "totalPrice",
+        b.platform_fee as "platformFee",
+        b.status as "status",
+        b.discount_note as "discountNote",
+        s.name as "spaceTitle",
+        u.name as "guestName",
+        u.avatar_url as "guestAvatar",
+        g.profession as "guestProfession",
+        g.license as "guestLicense",
+        exists(
+          select 1
+          from public.kyc_submissions ks
+          where ks.user_id = u.id
+            and ks.status = 'approved'
+        ) as "guestVerified",
+        g.created_at as "guestJoinedAt",
+        (
+          select count(*)::int
+          from public.bookings gb
+          where gb.guest_id = g.id
+            and gb.status not in ('cancelled', 'rejected')
+        ) as "guestUsageCount",
+        (
+          select avg(rv.rating)::float
+          from public.reviews rv
+          where rv.guest_id = g.id
+        ) as "guestRating",
+        (
+          select count(*)::int
+          from public.reviews rv
+          where rv.guest_id = g.id
+        ) as "guestReviewCount"
+      from public.bookings b
+      join public.spaces s on s.id = b.space_id
+      join public.guests g on g.id = b.guest_id
+      join public.users u on u.id = g.user_id
+      where b.space_id = $1::uuid
+      order by b.start_at desc
+    `,
+    spaceId,
+  );
 }
 
 /** Confirmed/past list rows for the host booking index. */
