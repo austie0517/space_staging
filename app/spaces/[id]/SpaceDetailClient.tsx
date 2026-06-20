@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { Availability, Review, Space, SpaceField } from "@/types";
@@ -90,16 +90,16 @@ export function SpaceDetailClient({
   fields,
   availabilities,
   bookings,
-  canRequestBooking,
 }: {
   space: Space;
   reviews: Review[];
   fields: SpaceField[];
   availabilities: Availability[];
   bookings: CalendarBooking[];
-  canRequestBooking: boolean;
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [canRequestBooking, setCanRequestBooking] = useState(false);
+  const [eligibilityResolved, setEligibilityResolved] = useState(false);
   const hasPitch = Boolean(space.pitchTitle || space.pitchBody);
   const bookingMap = useMemo(() => {
     const map = new Map<string, CalendarBooking[]>();
@@ -110,6 +110,33 @@ export function SpaceDetailClient({
     }
     return map;
   }, [bookings]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadEligibility = async () => {
+      try {
+        const response = await fetch("/api/booking-eligibility", {
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error("Failed to fetch booking eligibility");
+        const data = (await response.json()) as { canRequestBooking?: boolean };
+        if (!active) return;
+        setCanRequestBooking(Boolean(data.canRequestBooking));
+      } catch (error) {
+        console.error("[booking-eligibility] failed:", error);
+      } finally {
+        if (active) setEligibilityResolved(true);
+      }
+    };
+
+    void loadEligibility();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <div className="min-h-full pb-28">
@@ -254,7 +281,9 @@ export function SpaceDetailClient({
             <p className="text-xs text-on-surface-variant">
               {canRequestBooking
                 ? "前払い・即時確保"
-                : "予約には本人確認が必要です"}
+                : eligibilityResolved
+                  ? "予約には本人確認が必要です"
+                  : "予約可否を確認しています"}
             </p>
           </div>
           {canRequestBooking ? (
@@ -263,7 +292,11 @@ export function SpaceDetailClient({
               <Icon name="arrow_forward" className="text-[20px]" />
             </Button>
           ) : (
-            <ButtonLinkLike href="/me/verify" />
+            <ButtonLinkLike
+              href="/me/verify"
+              disabled={!eligibilityResolved}
+              label={eligibilityResolved ? "本人確認へ" : "確認中"}
+            />
           )}
         </div>
       </div>
@@ -281,13 +314,27 @@ export function SpaceDetailClient({
   );
 }
 
-function ButtonLinkLike({ href }: { href: string }) {
+function ButtonLinkLike({
+  href,
+  disabled = false,
+  label = "本人確認へ",
+}: {
+  href: string;
+  disabled?: boolean;
+  label?: string;
+}) {
   return (
     <Link
       href={href}
-      className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-8 py-4 text-base font-semibold text-on-primary shadow-soft transition-all duration-200 hover:brightness-110 active:brightness-95"
+      aria-disabled={disabled}
+      className={cn(
+        "inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 text-base font-semibold text-on-primary shadow-soft transition-all duration-200",
+        disabled
+          ? "pointer-events-none bg-primary/60"
+          : "bg-primary hover:brightness-110 active:brightness-95",
+      )}
     >
-      本人確認へ
+      {label}
       <Icon name="verified_user" className="text-[20px]" />
     </Link>
   );

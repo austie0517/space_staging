@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { FavoritesProvider } from "../../_components/useFavorites";
 import { getSpaceDetailPageData } from "@/lib/repositories/spaceRepository";
-import { getCurrentGuest } from "@/lib/repositories/guestRepository";
-import { isKycApproved } from "@/lib/repositories/kycRepository";
 import { getUIAvailabilities } from "@/lib/repositories/availabilityRepository";
 import { getBookingsForResourceCalendar } from "@/lib/repositories/bookingRepository";
 import { toCalendarBookingFromRow } from "@/lib/mappers/booking";
@@ -34,21 +32,16 @@ export default async function SpaceDetailPage({
 
   const { space, reviews, fields, parentSpaceId } = detail;
   const availabilityResourceId = parentSpaceId ?? id;
-  const guestPromise = getCurrentGuest();
-  const [availabilities, bookingRows, guest] = await measure(
+  const [availabilities, bookingRows] = await measure(
     `/spaces/${id} parallel data`,
     () =>
       Promise.all([
         getUIAvailabilities(availabilityResourceId),
         getBookingsForResourceCalendar(id),
-        guestPromise,
       ]),
   );
 
   const bookings = bookingRows.map(toCalendarBookingFromRow);
-  const canRequestBooking = guest
-    ? await measure(`isKycApproved(${guest.userId})`, () => isKycApproved(guest.userId))
-    : false;
 
   return measure(`/spaces/${id}`, async () => (
     <FavoritesProvider syncOnMount>
@@ -58,7 +51,6 @@ export default async function SpaceDetailPage({
         fields={fields}
         availabilities={availabilities}
         bookings={bookings}
-        canRequestBooking={canRequestBooking}
       />
     </FavoritesProvider>
   ));

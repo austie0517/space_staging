@@ -106,6 +106,14 @@ export type CalendarBookingRow = Prisma.BookingGetPayload<{
   select: typeof bookingCalendarSelect;
 }>;
 
+type CalendarBookingQueryRow = {
+  id: string;
+  startAt: Date;
+  endAt: Date;
+  status: string;
+  guestName: string | null;
+};
+
 const guestBookingListSelect = {
   id: true,
   spaceId: true,
@@ -265,7 +273,7 @@ export async function getBookingsBySpace(spaceId: string) {
 
 /** Bookings that block a resource calendar, including parent/child conflicts. */
 export async function getBookingsForResourceCalendar(spaceId: string) {
-  const rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+  const rows = await prisma.$queryRawUnsafe<CalendarBookingQueryRow[]>(
     `with selected as (
         select id, parent_space_id
         from public.spaces
@@ -284,18 +292,31 @@ export async function getBookingsForResourceCalendar(spaceId: string) {
           on child.parent_space_id = parent.id
         where parent.parent_space_id is null
       )
-      select id::text
-      from public.bookings
-      where space_id in (select id from conflict_resources)`,
+      select
+        b.id::text as "id",
+        b.start_at as "startAt",
+        b.end_at as "endAt",
+        b.status as "status",
+        u.name as "guestName"
+      from public.bookings b
+      left join public.guests g on g.id = b.guest_id
+      left join public.users u on u.id = g.user_id
+      where b.space_id in (select id from conflict_resources)
+        and b.status not in ('cancelled', 'rejected')
+      order by b.start_at desc`,
     spaceId,
   );
-  const ids = rows.map((row) => row.id);
-  if (ids.length === 0) return [];
-  return prisma.booking.findMany({
-    where: { id: { in: ids } },
-    select: bookingCalendarSelect,
-    orderBy: { startAt: "desc" },
-  });
+  return rows.map((row) => ({
+    id: row.id,
+    startAt: row.startAt,
+    endAt: row.endAt,
+    status: row.status,
+    guest: {
+      user: {
+        name: row.guestName ?? "",
+      },
+    },
+  }));
 }
 
 /** Bookings across all spaces owned by a host (newest first). */
