@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { isPerfLoggingEnabled, writeServerLog } from "@/lib/serverLog";
 
 // Next.js dev hot-reload would otherwise spawn a new client per reload and
 // exhaust the Supabase connection pool. Reuse a single instance via globalThis.
@@ -52,10 +53,7 @@ function getRuntimeDatabaseUrl() {
 }
 
 const runtimeDatabaseUrl = getRuntimeDatabaseUrl();
-const enablePerfLogging =
-  process.env.NODE_ENV === "development" ||
-  process.env.ENABLE_PROD_PERF_LOGS === "true";
-const enableQueryPerfLogging = enablePerfLogging;
+const enableQueryPerfLogging = isPerfLoggingEnabled;
 
 export const prisma =
   globalForPrisma.prisma ??
@@ -78,8 +76,8 @@ export async function ensurePrismaConnected() {
     globalForPrisma.prismaConnectPromise = prisma
       .$connect()
       .then(() => {
-        if (enablePerfLogging) {
-          console.log(`[prisma] connect ${Date.now() - startedAt}ms`);
+        if (isPerfLoggingEnabled) {
+          writeServerLog(`[prisma] connect ${Date.now() - startedAt}ms`);
         }
       })
       .catch((error) => {
@@ -100,13 +98,18 @@ if (enableQueryPerfLogging) {
   }).$on("query", (event) => {
     if (event.duration < 150) return;
     const query = event.query.replace(/\s+/g, " ").trim().slice(0, 240);
-    console.log(`[prisma] ${event.duration}ms ${query}`);
+    writeServerLog(`[prisma] ${event.duration}ms ${query}`);
   });
 }
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+if (isPerfLoggingEnabled) {
+  writeServerLog(
+    `[perf] logging enabled node_env=${process.env.NODE_ENV ?? "unknown"} runtime=${process.env.VERCEL === "1" ? "vercel" : "local"}`,
+  );
+}
 void ensurePrismaConnected().catch((error) => {
-  console.error("[prisma] initial connect failed:", error);
+  writeServerLog(`[prisma] initial connect failed: ${error instanceof Error ? error.stack ?? error.message : String(error)}`, "error");
 });
 
 export default prisma;
