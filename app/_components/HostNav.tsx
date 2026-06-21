@@ -37,7 +37,7 @@ export function HostNav() {
       {/* Desktop top bar */}
       <nav className="fixed inset-x-0 top-0 z-50 hidden border-b border-border bg-surface/90 backdrop-blur-md md:block">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
-          <Link href="/host/spaces" className="font-display text-lg text-primary">
+          <Link href="/host/spaces" prefetch={false} className="font-display text-lg text-primary">
             Zenith Lumina{" "}
             <span className="text-sm text-on-surface-variant">Host</span>
           </Link>
@@ -48,6 +48,7 @@ export function HostNav() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={false}
                   className={cn(
                     "relative flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors",
                     active
@@ -79,6 +80,7 @@ export function HostNav() {
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={false}
                 className="flex flex-1 flex-col items-center gap-1 py-1"
               >
                 <span

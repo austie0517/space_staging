@@ -9,7 +9,7 @@ import { sampleHost } from "@/mock/users";
 export function HostHeader({ subtitle }: { subtitle?: string }) {
   return (
     <header className="flex items-center justify-between px-5 pb-2 pt-6 md:hidden">
-      <Link href="/host/spaces" className="flex items-center gap-3">
+      <Link href="/host/spaces" prefetch={false} className="flex items-center gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={sampleHost.avatar}
@@ -27,6 +27,7 @@ export function HostHeader({ subtitle }: { subtitle?: string }) {
       </Link>
       <Link
         href="/host/me"
+        prefetch={false}
         className="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-high"
         aria-label="マイページ"
       >
