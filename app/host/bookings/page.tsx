@@ -4,7 +4,7 @@ import {
   getPendingBookingsByHost,
 } from "@/lib/repositories/bookingRepository";
 import {
-  toUIHostBookingListItem,
+  toUIHostBookingListLiteItem,
   toUIPendingHostBookingItem,
 } from "@/lib/mappers/booking";
 import { HostBookingsClient } from "./HostBookingsClient";
@@ -31,7 +31,7 @@ export default async function HostBookingsPage() {
         );
         return [
           ...pendingRows.map(toUIPendingHostBookingItem),
-          ...listRows.map(toUIHostBookingListItem),
+          ...listRows.map(toUIHostBookingListLiteItem),
         ];
       })()
     : [];

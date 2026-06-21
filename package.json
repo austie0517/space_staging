@@ -10,24 +10,27 @@
     "start:serverless-sim": "node scripts/serverless-sim.mjs",
     "start:railway": "next start -p 8080 -H 0.0.0.0",
     "postinstall": "prisma generate",
+    "test:e2e": "playwright test --config=e2e/playwright.config.ts",
     "lint": "eslint"
   },
   "dependencies": {
-    "@swc/helpers": "^0.5.15",
     "@prisma/client": "^6.19.3",
     "@supabase/supabase-js": "^2.107.0",
-    "next": "16.2.7",
+    "@swc/helpers": "^0.5.15",
+    "next": "^16.2.9",
     "prisma": "^6.19.3",
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
+    "stripe": "^22.2.2",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

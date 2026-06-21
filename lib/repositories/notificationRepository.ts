@@ -52,31 +52,44 @@ export async function getUnreadNotificationCounts(
     excludedTypes?: NotificationType[];
   }>,
 ) {
-  const entries = await Promise.all(
-    groups.map(async (group) => {
-      const included = group.includedTypes ?? [];
-      const excluded = group.excludedTypes ?? [];
-      const rows = await prisma.$queryRawUnsafe<Array<{ count: number }>>(
-        `select count(*)::int as count
-           from public.notifications
-          where user_id = $1::uuid
-            and is_read is false
-            and (
-              coalesce(array_length($2::text[], 1), 0) = 0
-              or type = any($2::text[])
-            )
-            and not (
-              coalesce(array_length($3::text[], 1), 0) > 0
-              and type = any($3::text[])
-            )`,
-        userId,
-        included,
-        excluded,
-      );
-      return [group.key, rows[0]?.count ?? 0] as const;
-    }),
+  if (groups.length === 0) return {};
+
+  const countExpressions = groups.map((group, index) => {
+    const includedParam = `$${index * 2 + 2}::text[]`;
+    const excludedParam = `$${index * 2 + 3}::text[]`;
+    return `
+      count(*) filter (
+        where (
+          coalesce(array_length(${includedParam}, 1), 0) = 0
+          or type = any(${includedParam})
+        )
+        and not (
+          coalesce(array_length(${excludedParam}, 1), 0) > 0
+          and type = any(${excludedParam})
+        )
+      )::int as "${group.key}"
+    `;
+  });
+
+  const params: unknown[] = [userId];
+  for (const group of groups) {
+    params.push(group.includedTypes ?? []);
+    params.push(group.excludedTypes ?? []);
+  }
+
+  const rows = await prisma.$queryRawUnsafe<Array<Record<string, number>>>(
+    `
+      select
+        ${countExpressions.join(",\n        ")}
+      from public.notifications
+      where user_id = $1::uuid
+        and is_read is false
+    `,
+    ...params,
   );
-  return Object.fromEntries(entries);
+
+  const row = rows[0] ?? {};
+  return Object.fromEntries(groups.map((group) => [group.key, Number(row[group.key] ?? 0)]));
 }
 
 export async function createNotification(input: NotificationInput) {

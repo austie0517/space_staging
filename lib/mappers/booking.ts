@@ -4,6 +4,7 @@ import type {
   BookingWithRelations,
   CalendarBookingRow,
   GuestBookingListRow,
+  HostBookingListLiteRow,
   HostSpaceBookingListRow,
   HostBookingListRow,
   PendingHostBookingRow,
@@ -135,6 +136,39 @@ export function toUIHostBookingListItem(b: HostBookingListRow): Booking {
     guestId: b.guestId,
     guestName: b.guest.user.name,
     guestAvatar: optimizeImageUrl(b.guest.user.avatarUrl || AVATAR_PLACEHOLDER, {
+      width: 160,
+      quality: 55,
+    }),
+    date: `${b.startAt.getFullYear()}年${b.startAt.getMonth() + 1}月${b.startAt.getDate()}日`,
+    start: hhmm(b.startAt),
+    end: hhmm(b.endAt),
+    hours,
+    total: b.totalPrice,
+    hostEarnings: Math.max(0, b.totalPrice - b.platformFee),
+    status: STATUS_MAP[b.status] ?? "pending",
+    message: b.discountNote ?? undefined,
+  };
+}
+
+export function toUIHostBookingListLiteItem(b: HostBookingListLiteRow): Booking {
+  const hours = Math.max(
+    0,
+    Math.round((b.endAt.getTime() - b.startAt.getTime()) / 3_600_000),
+  );
+  return {
+    id: b.id,
+    code: b.id.slice(0, 6).toUpperCase(),
+    spaceId: b.spaceId,
+    bookingLevel: (b.bookingLevel as "space" | "seat") ?? "space",
+    quantity: b.quantity ?? 1,
+    spaceTitle: b.spaceTitle,
+    spaceImage: optimizeImageUrl(b.spaceImage || COVER_PLACEHOLDER, {
+      width: 640,
+      quality: 55,
+    }),
+    guestId: b.guestId,
+    guestName: b.guestName,
+    guestAvatar: optimizeImageUrl(b.guestAvatar || AVATAR_PLACEHOLDER, {
       width: 160,
       quality: 55,
     }),

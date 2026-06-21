@@ -181,6 +181,24 @@ export type HostSpaceBookingListRow = {
   guestAvatar: string | null;
 };
 
+export type HostBookingListLiteRow = {
+  id: string;
+  spaceId: string;
+  guestId: string;
+  bookingLevel: string | null;
+  quantity: number | null;
+  startAt: Date;
+  endAt: Date;
+  totalPrice: number;
+  platformFee: number;
+  status: string;
+  discountNote: string | null;
+  spaceTitle: string;
+  spaceImage: string | null;
+  guestName: string;
+  guestAvatar: string | null;
+};
+
 /** Create a booking. Caller supplies spaceId/guestId and the priced amounts. */
 export async function createBooking(data: Prisma.BookingUncheckedCreateInput) {
   return prisma.booking.create({ data });
@@ -511,15 +529,42 @@ export async function getHostSpaceBookingList(spaceId: string) {
 
 /** Confirmed/past list rows for the host booking index. */
 export async function getHostBookingList(hostId: string, params?: { take?: number }) {
-  return prisma.booking.findMany({
-    where: {
-      space: { hostId },
-      status: { in: ["approved", "completed"] },
-    },
-    select: hostBookingListSelect,
-    orderBy: { startAt: "desc" },
-    take: params?.take,
-  });
+  return prisma.$queryRawUnsafe<HostBookingListLiteRow[]>(
+    `
+      select
+        b.id::text as "id",
+        b.space_id::text as "spaceId",
+        b.guest_id::text as "guestId",
+        b.booking_level as "bookingLevel",
+        b.quantity as "quantity",
+        b.start_at as "startAt",
+        b.end_at as "endAt",
+        b.total_price as "totalPrice",
+        b.platform_fee as "platformFee",
+        b.status as "status",
+        b.discount_note as "discountNote",
+        s.name as "spaceTitle",
+        (
+          select si.image_url
+          from public.space_images si
+          where si.space_id = s.id
+          order by coalesce(si.is_cover, false) desc, coalesce(si.sort_order, 0) asc, si.created_at asc
+          limit 1
+        ) as "spaceImage",
+        u.name as "guestName",
+        u.avatar_url as "guestAvatar"
+      from public.bookings b
+      join public.spaces s on s.id = b.space_id
+      join public.guests g on g.id = b.guest_id
+      join public.users u on u.id = g.user_id
+      where s.host_id = $1::uuid
+        and b.status in ('approved', 'completed')
+      order by b.start_at desc
+      limit $2
+    `,
+    hostId,
+    params?.take ?? 60,
+  );
 }
 
 /** Aggregated earnings by status for the host earnings page. */
